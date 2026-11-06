@@ -49,6 +49,11 @@ def build(tdb, env="prod", limit=None):
             if old in a:
                 a[new] = a[old]
         a["openinference.span.kind"] = {"agent": "AGENT", "llm": "LLM", "tool": "TOOL", "handoff": "CHAIN"}[kind]
+        a["gen_ai.operation.name"] = {"agent": "invoke_agent", "llm": "chat", "tool": "execute_tool", "handoff": "handoff"}[kind]
+        if kind == "llm":
+            a["gen_ai.provider.name"] = "openai"
+        if kind == "tool":
+            a["gen_ai.tool.name"] = name
         if kind == "llm":
             a["langfuse.observation.type"] = "generation"
         if not pid:

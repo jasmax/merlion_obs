@@ -13,7 +13,6 @@ two refusals: the corporate-account emails (audit T27) are the refusals.
 """
 import json
 import sys
-from pathlib import Path
 
 from .db import ROOT, connect
 from .reference import SGT

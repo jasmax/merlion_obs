@@ -32,7 +32,6 @@ TOWN_ZONE = {
     **{t: "North / West" for t in ["Bukit Batok", "Choa Chu Kang", "Clementi", "Jurong East",
                                     "Jurong West", "Woodlands", "Yishun"]},
 }
-ZONES = ["Central", "East / North-East", "North / West", "Sentosa / Jurong Island"]
 
 TOWN_CENTROID = {  # approximate town centres (lat, lon); team assumption, see module docstring
     "Ang Mo Kio": (1.3691, 103.8454), "Bedok": (1.3236, 103.9273), "Bishan": (1.3526, 103.8352),
@@ -72,7 +71,6 @@ def dist_m(a_lat, a_lon, b_lat, b_lon):
 # The client gave no written policy (BuildGuide "Data problems"). These rules are the team's
 # assumption and every verdict carries "based on assumed policy". Keep in sync with docs/policies.md.
 VERDICTS = ["redeliver", "refund", "compensate", "reject"]
-OUTCOMES = VERDICTS + ["clarify", "refuse", "escalate"]   # clarify/refuse/escalate hand back to a human
 LATE_VOUCHER_SGD = 5.00
 DAMAGE_GOODWILL_SGD = 15.00
 MONEY_CAP_SGD = 30.00

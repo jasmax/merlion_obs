@@ -4,7 +4,7 @@ import sqlite3
 from collections import Counter
 
 from merlion_devobs.analysis import clusters
-from merlion_devobs.prompts import PROMPTS, phash
+from merlion_obs.registry import PROMPTS, phash
 
 import os
 
@@ -37,10 +37,6 @@ for rid, cid, name, kind, agent, start, dur, status, attrs, dg in db.execute(
         [name, kind, agent, round(start), round(dur), status, json.dumps(out, default=str)[:180] if out is not None else "", dg, extra])
 
 registry = []
-used = Counter()
-for r in runs:
-    for ag, pref in r["prompts"].items():
-        used[pref] += 1
 for ag, vs in PROMPTS.items():
     for v, text in vs.items():
         pref = f"{ag}@{v}#{phash(ag, v)}"

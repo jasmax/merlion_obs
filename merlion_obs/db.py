@@ -105,10 +105,6 @@ class Ops:
         rows = self.all(sql, params)
         return rows[0] if rows else None
 
-    def scalar(self, sql, params=()):
-        r = self.one(sql, params)
-        return next(iter(r.values())) if r else None
-
 
 def _mysql_settings():
     load_env()

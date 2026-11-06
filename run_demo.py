@@ -135,13 +135,13 @@ def main():
         return tr.db.execute("SELECT COUNT(*) FROM spans s JOIN traces t USING(trace_id) WHERE t.env='prod' AND " + sql).fetchone()[0]
 
     dash = {
-        "generated_at": dt.datetime.now(SGT).isoformat(timespec="minutes"),
         "source": {"kind": SOURCE, "db": ops.source, "labelled": len(labelled), "emails": len(complaints)},
         "period": [daily[0]["day"], daily[-1]["day"]],
         "events": {"deploy_v02": deploy.isoformat(),
                    "incident": [incident_win[0].date().isoformat(), incident_win[1].date().isoformat()] if incident_win else None},
         "daily": daily, "by_version": metrics.by_version(traces), "alerts": fired,
         "spans": metrics.span_latency(tr.db), "weekly": metrics.weekly_drivers(traces),
+        "insights": metrics.insights(tr.db),
         "zone_truth": [{"version": k[0], "zone": k[1], "n": v} for k, v in sorted(true_zone.items())],
         "zone_attr": [{"version": k[0], "zone": k[1], "n": v} for k, v in sorted(attr_zone.items())],
         "evals": {v: {k: m[k] for k in m if k != "failures"} for v, m in evals.items()} or None,

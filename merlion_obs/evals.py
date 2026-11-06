@@ -18,7 +18,6 @@ from . import dataset, db
 from .agent import TriageAgent
 from .checks import run_checks
 from .clock import CLOCK
-from .reference import VERDICTS
 from .tracer import Tracer
 
 GATES = {  # metric: (comparator, threshold)

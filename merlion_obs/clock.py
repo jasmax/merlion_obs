@@ -13,10 +13,6 @@ class Clock:
     def __init__(self):
         self._virtual = None
 
-    @property
-    def virtual(self) -> bool:
-        return self._virtual is not None
-
     def set(self, t: dt.datetime):
         self._virtual = t.astimezone(UTC)
 

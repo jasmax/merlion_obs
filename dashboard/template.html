@@ -6,7 +6,7 @@
 /* Layout: ops console. Sticky section nav, summary first, then evidence, then drill-down. Version colour (v0.1 orange / v0.2 blue) is the one encoding used everywhere. */
 :root {
   --bg: #f4f6f6; --surface: #ffffff; --sunk: #eaeeee; --ink: #142120; --ink-2: #4a5958; --muted: #74817f;
-  --line: #dbe2e1; --accent: #0e6a66;
+  --line: #dbe2e1; --accent: #0e6a66; --k1: #1baf7a; --k2: #6250d6; --k3: #e87ba4;
   --v1: #eb6834; --v2: #2a78d6; --band: rgba(235,104,52,.07); --inc: rgba(208,59,59,.10);
   --good: #0ca30c; --warn: #fab219; --serious: #ec835a; --crit: #d03b3b; --good-ink: #0a7a0a; --crit-ink: #b42f2f;
   --seq1: #e8f0fb; --seq2: #b7d3f6; --seq3: #6da7ec; --seq4: #2a78d6; --seq5: #184f95;
@@ -17,12 +17,12 @@
 }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
   --bg: #111615; --surface: #19201f; --sunk: #212a29; --ink: #edf2f1; --ink-2: #b5c1bf; --muted: #8b9896;
-  --line: #2b3533; --accent: #55b8b1; --v1: #d95926; --v2: #3987e5; --band: rgba(217,89,38,.10); --inc: rgba(230,103,103,.13);
+  --line: #2b3533; --accent: #55b8b1; --k1: #199e70; --k2: #9085e9; --k3: #d55181; --v1: #d95926; --v2: #3987e5; --band: rgba(217,89,38,.10); --inc: rgba(230,103,103,.13);
   --good-ink: #3fc23f; --crit-ink: #ec7171;
   --seq1: #1d2a3a; --seq2: #184f95; --seq3: #256abf; --seq4: #3987e5; --seq5: #86b6ef; color-scheme: dark; } }
 :root[data-theme="dark"] {
   --bg: #111615; --surface: #19201f; --sunk: #212a29; --ink: #edf2f1; --ink-2: #b5c1bf; --muted: #8b9896;
-  --line: #2b3533; --accent: #55b8b1; --v1: #d95926; --v2: #3987e5; --band: rgba(217,89,38,.10); --inc: rgba(230,103,103,.13);
+  --line: #2b3533; --accent: #55b8b1; --k1: #199e70; --k2: #9085e9; --k3: #d55181; --v1: #d95926; --v2: #3987e5; --band: rgba(217,89,38,.10); --inc: rgba(230,103,103,.13);
   --good-ink: #3fc23f; --crit-ink: #ec7171;
   --seq1: #1d2a3a; --seq2: #184f95; --seq3: #256abf; --seq4: #3987e5; --seq5: #86b6ef; color-scheme: dark; }
 
@@ -130,6 +130,21 @@ pre.attrs { background: var(--sunk); border-radius: 6px; padding: 12px; margin: 
 .bars .b span { position: absolute; left: calc(100% + 6px); top: -3px; font: 11px var(--f-mono); color: var(--ink-2); white-space: nowrap; }
 ol.steps { margin: 0; padding-left: 20px; display: grid; gap: 8px; max-width: 75ch; }
 @media (prefers-reduced-motion: no-preference) { .tlist button, .wf button { transition: background .12s, border-color .12s; } }
+
+/* insights */
+.ins-ctl { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.ins-ctl select { font: 500 12.5px var(--f-body); color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+.ins-ctl .asof { font: 11.5px var(--f-mono); color: var(--muted); }
+.ikpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: 12px; margin-bottom: 16px; }
+.ikpi { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px 8px; display: grid; gap: 4px; }
+.ikpi .label { font: 500 11px/1.2 var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.ikpi .val { font: 600 26px/1.1 var(--f-display); color: var(--ink); font-variant-numeric: tabular-nums; }
+.ikpi .val small { font-size: 13px; color: var(--ink-2); margin-left: 2px; }
+.ikpi svg { display: block; width: 100%; height: 34px; }
+.ileg { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--ink-2); margin-top: 4px; }
+.ileg i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; margin-right: 5px; vertical-align: -1px; }
+.ileg b { font: 500 12px var(--f-mono); color: var(--ink); margin-left: 4px; }
+.iempty { color: var(--muted); font-size: 13px; padding: 40px 0; text-align: center; }
 </style>
 
 <header class="top"><div class="wrap">
@@ -144,10 +159,25 @@ ol.steps { margin: 0; padding-left: 20px; display: grid; gap: 8px; max-width: 75
   </div>
 </div></header>
 <nav class="sec" aria-label="Sections"><div class="wrap">
-  <a href="#now">Now</a><a href="#alerts">Alerts</a><a href="#trends">Trends</a><a href="#guardrails">Guardrails</a><a href="#evals">Evals</a><a href="#drivers">Drivers &amp; zones</a><a href="#tools">Tools</a><a href="#traces">Traces</a><a href="#wiring">Wiring</a>
+  <a href="#insights">Insights</a><a href="#now">Now</a><a href="#alerts">Alerts</a><a href="#trends">Trends</a><a href="#guardrails">Guardrails</a><a href="#evals">Evals</a><a href="#drivers">Drivers &amp; zones</a><a href="#tools">Tools</a><a href="#traces">Traces</a><a href="#wiring">Wiring</a>
 </div></nav>
 
 <main><div class="wrap">
+  <section id="insights">
+    <div class="head"><div><div class="eyebrow">AI observability · OpenAI traffic</div><h2>Insights</h2>
+      <p class="sub">Latency, errors, tokens and cost across the triage app's LLM traffic. Costs are estimates from list prices.</p></div>
+      <div class="ins-ctl"><div class="seg" role="group" aria-label="Time range" id="insRange"></div>
+        <label class="why" for="insRel">Release</label><select id="insRel"></select><span class="asof" id="insAsof"></span></div></div>
+    <div class="ikpis" id="insKpis"></div>
+    <div class="charts">
+      <div class="panel chart"><h3>Cost trend</h3><p class="desc">Estimated US$ by model.</p><div id="insCost"></div></div>
+      <div class="panel chart"><h3>Token trend</h3><p class="desc">Input + output tokens by model.</p><div id="insTok"></div></div>
+      <div class="panel chart"><h3>Span trend</h3><p class="desc">Span count by kind (GenAI operation).</p><div id="insSpan"></div></div>
+      <div class="panel chart"><h3>Latency by model</h3><p class="desc">p50 / p90 / p95 / p99 per model call, and end to end.</p><div id="insLat"></div></div>
+      <div class="panel chart"><h3>Requests over time</h3><p class="desc">Complaints triaged, by release.</p><div id="insReq"></div></div>
+      <div class="panel chart"><h3>Errors over time</h3><p class="desc">Traces with a failed model or tool call.</p><div id="insErr"></div></div>
+    </div>
+  </section>
   <section id="now">
     <div class="head"><div><div class="eyebrow">Last 7 days · v0.2 in production</div><h2>Current health</h2></div></div>
     <div class="kpis" id="kpis"></div>
@@ -450,5 +480,117 @@ $("#heat").addEventListener("mouseleave", hideTip);
   }
   document.querySelectorAll("#tlist button").forEach(b => b.addEventListener("click", () => show(+b.dataset.i)));
   show(0);
+})();
+
+// ---------- Insights ----------
+(function () {
+  const I = D.insights; if (!I) { $("#insights").hidden = true; return; }
+  const HR = 3600e3, SG = 8 * HR;
+  const RANGES = [["1d", "Past 1 day", 24 * HR, HR], ["7d", "Past 7 days", 7 * 24 * HR, 6 * HR], ["28d", "Past 28 days", 28 * 24 * HR, 24 * HR]];
+  const KINDS = [["invoke_agent", "var(--k1)"], ["chat", "var(--k2)"], ["execute_tool", "var(--k3)"]];
+  const PCTS = [["p50", .5, "var(--seq2)"], ["p90", .9, "var(--seq3)"], ["p95", .95, "var(--seq4)"], ["p99", .99, "var(--seq5)"]];
+  const MODELS = [...new Set(I.llm.map(r => r[2]))].sort();
+  const MCOL = ["var(--accent)", "var(--k1)", "var(--k2)", "var(--k3)"];
+  const mcol = m => MCOL[MODELS.indexOf(m) % MCOL.length];
+  const RELS = [...new Set(I.traces.map(r => r[1]))].sort();
+  const END = Math.max(...I.traces.map(t => t[0]));
+  let range = new URLSearchParams(location.search).get("range") || "1d", rel = "all";
+  const tfmt = (ms, step) => new Intl.DateTimeFormat("en-SG", step < 24 * HR
+    ? {timeZone: "Asia/Singapore", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23"}
+    : {timeZone: "Asia/Singapore", day: "numeric", month: "short"}).format(ms);
+  const q = (xs, p) => { if (!xs.length) return 0; const s = [...xs].sort((a, b) => a - b); return s[Math.max(0, Math.ceil(p * s.length) - 1)]; };
+  const money = v => "US$" + (v < 1 ? v.toFixed(4) : v.toFixed(2));
+  const kfmt = v => v >= 1e6 ? (v / 1e6).toFixed(1) + "M" : v >= 1e3 ? (v / 1e3).toFixed(1) + "K" : String(Math.round(v));
+  const secs = v => (v / 1000).toFixed(1) + " s";
+  const sum = a => a.reduce((s, x) => s + x, 0);
+
+  $("#insRange").innerHTML = RANGES.map(r => `<button data-r="${r[0]}" aria-pressed="${r[0] === range}">${r[1]}</button>`).join("");
+  $("#insRel").innerHTML = `<option value="all">All releases</option>` + RELS.map(v => `<option value="${v}">${v}</option>`).join("");
+  $("#insAsof").textContent = "to " + tfmt(END, HR) + " SGT (latest trace)";
+  $("#insRange").querySelectorAll("button").forEach(b => b.addEventListener("click", () => { range = b.dataset.r;
+    $("#insRange").querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x.dataset.r === range)); draw(); }));
+  $("#insRel").addEventListener("change", e => { rel = e.target.value; draw(); });
+
+  function view() {
+    const [, , span, step] = RANGES.find(r => r[0] === range);
+    const t1 = END + 1, t0 = END - span;
+    const b0 = Math.floor((t0 + SG) / step) * step - SG, nb = Math.ceil((t1 - b0) / step);
+    const keep = r => r[0] >= b0 && r[0] < t1 && (rel === "all" || r[1] === rel);
+    const times = Array.from({length: nb}, (_, i) => b0 + i * step);
+    const per = (rows, f) => { const a = times.map(() => []); rows.forEach(r => { const i = Math.floor((r[0] - b0) / step); if (i >= 0 && i < nb) a[i].push(r); }); return a.map(f); };
+    return {step, times, nb, per, tr: I.traces.filter(keep), lm: I.llm.filter(keep), sp: I.spans.filter(keep)};
+  }
+
+  function spark(vals) {
+    const W = 200, H = 34, n = vals.length, max = Math.max(...vals, 0) || 1;
+    const pts = vals.map((v, i) => [n > 1 ? i / (n - 1) * W : W / 2, H - 2 - v / max * (H - 6)]);
+    const line = pts.map(p => p.map(x => x.toFixed(1)).join(",")).join(" ");
+    return `<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true"><polygon points="0,${H} ${line} ${W},${H}" fill="var(--accent)" opacity=".12"/>
+      <polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke" stroke-linejoin="round"/></svg>`;
+  }
+
+  function bars(el, V, series, fmt, afmt = fmt) {
+    const shown = series.filter(se => sum(se.values) > 0);
+    if (!shown.length) { el.innerHTML = `<div class="iempty">None in this period.</div>`; return; }
+    const W = Math.max(280, el.clientWidth), H = 190, m = {l: 64, r: 10, t: 10, b: 24};
+    const iw = W - m.l - m.r, ih = H - m.t - m.b, bw = iw / V.nb;
+    const tot = V.times.map((_, i) => sum(shown.map(se => se.values[i])));
+    const max = Math.max(...tot) * 1.1 || 1, y = v => m.t + ih - v / max * ih;
+    const barW = Math.max(2, Math.min(26, bw * 0.7));
+    let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img">`;
+    [0, max / 2 / 1.1, max / 1.1].forEach(t => s += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${y(t)}" y2="${y(t)}"/><text x="${m.l - 6}" y="${y(t) + 3.5}" text-anchor="end">${afmt(t)}</text>`);
+    s += `<line class="axis" x1="${m.l}" x2="${W - m.r}" y1="${m.t + ih}" y2="${m.t + ih}"/>`;
+    const every = Math.max(1, Math.ceil(V.nb / 6));
+    V.times.forEach((t, i) => { if (i % every === 0) s += `<text x="${m.l + (i + .5) * bw}" y="${H - 6}" text-anchor="middle">${tfmt(t, V.step).replace(",", "")}</text>`; });
+    V.times.forEach((t, i) => {
+      let cum = 0;
+      shown.forEach((se, k) => { const v = se.values[i]; if (!v) return;
+        const top = y(cum + v), h = Math.max(1, (v / max) * ih - (cum > 0 ? 2 : 0));
+        s += `<rect x="${m.l + i * bw + (bw - barW) / 2}" y="${top}" width="${barW}" height="${h}" rx="2" fill="${se.color}"/>`; cum += v; });
+      const tipTxt = `<b>${tfmt(t, V.step)}</b>` + shown.map(se => `<br>${se.name}: ${fmt(se.values[i])}`).join("") + (shown.length > 1 ? `<br>total: ${fmt(tot[i])}` : "");
+      s += `<rect class="hitb" x="${m.l + i * bw}" y="${m.t}" width="${bw}" height="${ih}" fill="transparent" data-t="${esc(tipTxt)}"/>`;
+    });
+    el.innerHTML = s + `</svg><div class="ileg">${shown.map(se => `<span><i style="background:${se.color}"></i>${esc(se.name)}<b>${fmt(sum(se.values))}</b></span>`).join("")}</div>`;
+    el.querySelectorAll(".hitb").forEach(r => { r.addEventListener("mousemove", e => showTip(e, r.dataset.t)); r.addEventListener("mouseleave", hideTip); });
+  }
+
+  function latency(el, V) {
+    const rows = [...MODELS.map(mo => [mo, V.lm.filter(r => r[2] === mo).map(r => r[3])]), ["triage (end to end)", V.tr.map(r => r[2])]].filter(r => r[1].length);
+    if (!rows.length) { el.innerHTML = `<div class="iempty">None in this period.</div>`; return; }
+    const W = Math.max(280, el.clientWidth), lw = Math.min(150, W * 0.32), barH = 7, gap = 2, grp = PCTS.length * (barH + gap) + 18;
+    const H = rows.length * grp + 30, iw = W - lw - 14;
+    const max = Math.max(...rows.map(r => q(r[1], .99))) * 1.08 || 1, x = v => lw + v / max * iw;
+    let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img">`;
+    [0, max / 2 / 1.08, max / 1.08].forEach(t => s += `<line class="grid" x1="${x(t)}" x2="${x(t)}" y1="4" y2="${H - 22}"/><text x="${x(t)}" y="${H - 8}" text-anchor="middle">${secs(t)}</text>`);
+    rows.forEach(([name, xs], j) => { const y0 = 6 + j * grp;
+      s += `<text x="${lw - 8}" y="${y0 + 2 * (barH + gap) + 2}" text-anchor="end" style="fill:var(--ink-2)">${esc(name)}</text>`;
+      PCTS.forEach(([pn, p, col], k) => { const v = q(xs, p), yy = y0 + k * (barH + gap);
+        s += `<rect x="${lw}" y="${yy}" width="${Math.max(2, x(v) - lw)}" height="${barH}" rx="2" fill="${col}"/>`;
+        s += `<rect class="hitb" x="${lw}" y="${yy - 1}" width="${iw}" height="${barH + gap}" fill="transparent" data-t="${esc(`<b>${name}</b><br>${pn}: ${secs(v)} · ${xs.length} calls`)}"/>`; }); });
+    el.innerHTML = s + `</svg><div class="ileg">${PCTS.map(([pn, , col]) => `<span><i style="background:${col}"></i>${pn}</span>`).join("")}</div>`;
+    el.querySelectorAll(".hitb").forEach(r => { r.addEventListener("mousemove", e => showTip(e, r.dataset.t)); r.addEventListener("mouseleave", hideTip); });
+  }
+
+  function draw() {
+    const V = view(), tr = V.tr, n = tr.length;
+    const cost = sum(V.lm.map(r => r[4])), tokens = sum(V.lm.map(r => r[5])), errs = tr.filter(r => r[5]).length;
+    const K = [
+      ["Total cost", money(cost), V.per(V.lm, a => sum(a.map(r => r[4])))],
+      ["Total tokens", kfmt(tokens), V.per(V.lm, a => sum(a.map(r => r[5])))],
+      ["Total traces", String(n), V.per(tr, a => a.length)],
+      ["P95 latency", n ? (q(tr.map(r => r[2]), .95) / 1000).toFixed(1) + "<small>s</small>" : "–", V.per(tr, a => q(a.map(r => r[2]), .95))],
+      ["Error rate", n ? (errs / n * 100).toFixed(1) + "<small>%</small>" : "–", V.per(tr, a => a.length ? a.filter(r => r[5]).length / a.length : 0)],
+    ];
+    $("#insKpis").innerHTML = K.map(([l, v, sp]) => `<div class="ikpi"><div class="label">${l}</div><div class="val">${v}</div>${spark(sp)}</div>`).join("");
+    const byModel = idx => MODELS.map(mo => ({name: mo, color: mcol(mo), values: V.per(V.lm.filter(r => r[2] === mo), a => sum(a.map(r => r[idx])))}));
+    bars($("#insCost"), V, byModel(4), money, v => "$" + v.toFixed(v < 0.1 ? 4 : 2));
+    bars($("#insTok"), V, byModel(5), kfmt);
+    bars($("#insSpan"), V, KINDS.map(([k, col]) => ({name: k, color: col, values: V.per(V.sp.filter(r => r[2] === k), a => sum(a.map(r => r[3])))})), kfmt);
+    latency($("#insLat"), V);
+    bars($("#insReq"), V, RELS.map(v => ({name: v, color: `var(--${v === "v0.1" ? "v1" : "v2"})`, values: V.per(tr.filter(r => r[1] === v), a => a.length)})), kfmt);
+    bars($("#insErr"), V, [{name: "traces with errors", color: "var(--crit)", values: V.per(tr, a => a.filter(r => r[5]).length)}], kfmt);
+  }
+  draw();
+  let rz2; addEventListener("resize", () => { clearTimeout(rz2); rz2 = setTimeout(draw, 150); });
 })();
 </script>

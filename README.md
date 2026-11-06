@@ -70,6 +70,7 @@ The verdicts follow `docs/policies.md`, the team's **assumed** policy. Every ver
 | Guardrails | `checks.py` | 13 checks on every production trace, using only spans and `merlion_clean` (no labels). |
 | Evals | `evals.py` | Golden set → order accuracy, resolution accuracy, wrongful rejects, refusals, critical checks, p95 latency. The gates block the merge. |
 | Metrics, alerts | `metrics.py`, `alerts.py` | Daily rollups, v0.1 vs v0.2, per-span latency, Priya's weekly driver and zone view, and 10 alert rules (page vs ticket). |
+| Insights view | `metrics.insights()`, top of `out/dashboard.html` | Total cost, total tokens, total traces, P95 latency and error rate (each with a sparkline), plus cost and token trends by model, span trend by kind (`invoke_agent` / `chat` / `execute_tool`), latency by model (p50/p90/p95/p99), requests over time and errors over time. Filter by past 1 / 7 / 28 days and by release. |
 
 The demo timeline (fixture):
 

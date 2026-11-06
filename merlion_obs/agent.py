@@ -290,7 +290,7 @@ class Pipeline:
                 with self.tr.span(span_name, "llm") as s:
                     deg = self.incident(CLOCK.now())
                     wait(rng, ms * (deg["latency_x"] if deg else 1))
-                    s.set(**{"retry.attempt": attempt})
+                    s.set(**{"retry.attempt": attempt, "llm.model": llm.model_id(model)})
                     if deg and rng.random() < deg["fail_rate"]:
                         raise TimeoutError("OpenAI API timed out (429/503)")
                     s.llm(model, ref("chat", self.p["chat"]), tin, tout)

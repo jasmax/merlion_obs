@@ -109,3 +109,28 @@ def trace_detail(tdb, trace_id):
     checks = [dict(zip(["check", "passed", "severity", "detail"], r[1:]))
               for r in tdb.execute("SELECT * FROM checks WHERE trace_id=?", (trace_id,))]
     return {"trace_id": trace_id, "spans": spans, "checks": checks}
+
+
+SPAN_OP = {"agent": "invoke_agent", "llm": "chat", "tool": "execute_tool", "handoff": "handoff"}  # GenAI operation names
+
+
+def insights(tdb, env="prod"):
+    """Rows for the Insights view (cost, tokens, traces, latency, errors, spans over time). Kept raw/hourly so
+    the page can filter by time range and release without a server."""
+    ms = lambda iso: int(dt.datetime.fromisoformat(iso).timestamp() * 1000)
+    err = {tid for (tid,) in tdb.execute(
+        "SELECT DISTINCT s.trace_id FROM spans s JOIN traces t USING(trace_id) WHERE t.env=? AND s.status='error'", (env,))}
+    traces = [[ms(st_), v, round(d), round(c, 6), (ti or 0) + (to or 0), int(tid in err)]
+              for tid, st_, v, d, c, ti, to in tdb.execute(
+                  "SELECT trace_id, start_ts, agent_version, duration_ms, cost_usd, tokens_in, tokens_out FROM traces WHERE env=? ORDER BY start_ts", (env,))]
+    llm = []
+    for st_, v, dur, status, attrs in tdb.execute(
+            "SELECT s.start_ts, t.agent_version, s.duration_ms, s.status, s.attrs FROM spans s JOIN traces t USING(trace_id) "
+            "WHERE t.env=? AND s.kind='llm' ORDER BY s.start_ts", (env,)):
+        a = json.loads(attrs)
+        llm.append([ms(st_), v, a.get("llm.model") or "unknown", round(dur), round(a.get("llm.cost_usd", 0), 6),
+                    a.get("llm.tokens_in", 0) + a.get("llm.tokens_out", 0), int(status == "error")])
+    counts = Counter()
+    for st_, v, kind in tdb.execute("SELECT s.start_ts, t.agent_version, s.kind FROM spans s JOIN traces t USING(trace_id) WHERE t.env=?", (env,)):
+        counts[(ms(st_) // 3_600_000 * 3_600_000, v, SPAN_OP.get(kind, kind))] += 1
+    return {"traces": traces, "llm": llm, "spans": [[h, v, k, n] for (h, v, k), n in sorted(counts.items())]}

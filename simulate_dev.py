@@ -11,11 +11,10 @@ import json
 import os
 import random
 
-from merlion_devobs import prompts
 from merlion_devobs.analysis import clusters, diff_runs
 from merlion_devobs.cli import latest_on
 from merlion_devobs.runner import run_experiment
-from merlion_obs import dataset, db, fixture
+from merlion_obs import dataset, db, fixture, registry
 from merlion_obs.agent import config
 
 import sqlite3
@@ -46,7 +45,7 @@ def main():
     for f in ("devobs.db", "merlion_clean.db"):
         if os.path.exists(f"{OUT}/{f}"):
             os.remove(f"{OUT}/{f}")
-    prompts.write_files("prompts")
+    registry.write_files("prompts")
     if SOURCE == "fixture":
         fixture.build(f"{OUT}/merlion_clean.db")  # same seed: the same world as the production stack
     ops = db.connect(SOURCE, f"{OUT}/merlion_clean.db")

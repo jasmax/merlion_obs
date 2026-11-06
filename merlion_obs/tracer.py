@@ -16,7 +16,7 @@ from contextlib import contextmanager
 
 from . import llm
 from .clock import CLOCK
-from .pii import PATTERNS as _PII, redact
+from .pii import redact
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS spans(

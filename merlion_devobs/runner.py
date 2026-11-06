@@ -18,7 +18,7 @@ from collections import Counter, defaultdict
 from merlion_obs.agent import COMPONENTS, TOOL_PLAN, Pipeline, oracle
 from merlion_obs.clock import CLOCK
 from merlion_obs.reference import VERDICTS, policy
-from .prompts import ref
+from merlion_obs.registry import ref
 from .tracer import DevTracer
 
 AGENTS = COMPONENTS
