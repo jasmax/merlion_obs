@@ -6,3 +6,6 @@ out_dev/candidates.jsonl
 .env
 out/
 out_dev/
+merlionObs_env/
+.venv/
+llm_cache.db

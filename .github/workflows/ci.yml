@@ -1,0 +1,49 @@
+# Every push and pull request: evals + regression gate, both dashboards uploaded as artifacts.
+# Deploying is Railway's job: the service is connected to this repo with "Wait for CI" on, so Railway
+# deploys a commit on main only after this workflow passes (see SETUP.md).
+#
+# Optional repository settings (Settings > Secrets and variables > Actions):
+#   variable LLM_MODE        sim (default, no API calls) or replay (real OpenAI calls, recorded and replayed)
+#   secret   OPENAI_API_KEY  only needed when LLM_MODE=replay
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    env:
+      LLM_MODE: ${{ vars.LLM_MODE || 'sim' }}
+      LLM_CACHE: ${{ github.workspace }}/llm_cache.db
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Restore recorded OpenAI responses
+        uses: actions/cache@v4
+        with:
+          path: llm_cache.db
+          key: llm-cache-${{ github.head_ref || github.ref_name }}-${{ github.sha }}
+          restore-keys: |
+            llm-cache-${{ github.head_ref || github.ref_name }}-
+            llm-cache-main-
+      - name: Evals and regression gate (fails the build if blocked)
+        run: chmod +x ci_gate.sh && ./ci_gate.sh
+      - name: Build dashboards
+        if: always()
+        run: python build_dashboard.py && DEVOBS_DB=out_dev/ci.db python build_dev_dashboard.py
+      - name: Upload dashboards
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dashboards
+          path: |
+            out/dashboard.html
+            out_dev/dev_dashboard.html

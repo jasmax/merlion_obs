@@ -1,17 +1,17 @@
 {
   "prompts": {
-    "router": "v2",
-    "order_resolver": "v2",
-    "evidence": "v3",
-    "policy": "v1",
-    "writer": "v1"
+    "intake": "v1",
+    "resolveOrder": "v2",
+    "tools": "v3",
+    "chat": "v2",
+    "answer_check": "v1"
   },
   "models": {
-    "router": "sonnet",
-    "order_resolver": "sonnet",
-    "evidence": "sonnet",
-    "policy": "sonnet",
-    "writer": "sonnet"
+    "intake": "-",
+    "resolveOrder": "-",
+    "tools": "-",
+    "chat": "mini",
+    "answer_check": "-"
   },
-  "max_hops": 8
+  "max_tool_calls": 8
 }

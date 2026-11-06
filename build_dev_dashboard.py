@@ -7,6 +7,11 @@ from merlion_devobs.analysis import clusters
 from merlion_devobs.prompts import PROMPTS, phash
 
 import os
+
+EXTRA = ("prompt.ref", "llm.model", "llm.cost_usd", "order.basis", "order.candidates", "order.status", "order.reason",
+         "gps.epoch_window", "gps.pings_in_window", "gps.min_dist_m", "gps.near_town", "delivery.zone", "delivery.zone_basis",
+         "rate.zone", "rate.zone_basis", "rate.expected_price", "rate.guessed", "chat.tools", "chat.conflicts_found",
+         "chat.conflicts_disclosed", "check.problems", "tool.gaps", "handoff.hop")
 db = sqlite3.connect(os.environ.get("DEVOBS_DB", "out_dev/devobs.db"))
 runs = []
 for rid, ts, sha, br, who, msg, cfg, prompts, summ, gate in db.execute(
@@ -24,12 +29,10 @@ for rid, cid, cat, src, exp, got, passed, comps, blame, sig, lat, cost, hops, lo
 spans = {}
 for rid, cid, name, kind, agent, start, dur, status, attrs, dg in db.execute(
         "SELECT run_id, case_id, name, kind, agent, start_ms, dur_ms, status, attrs, out_digest FROM spans ORDER BY run_id, case_id, start_ms, "
-        "CASE WHEN name='triage_network' THEN 0 WHEN kind='handoff' THEN 1 WHEN kind='agent' THEN 2 ELSE 3 END"):
+        "CASE WHEN name='triage' THEN 0 WHEN kind='handoff' THEN 1 WHEN kind='agent' THEN 2 ELSE 3 END"):
     a = json.loads(attrs)
     out = a.get("output")
-    extra = {k: v for k, v in a.items() if k in ("prompt.ref", "llm.model", "llm.cost_usd", "order.basis", "order.candidates",
-                                                    "delivery.tz_assumed", "delivery.postal_code", "delivery.geocode",
-                                                    "gps.pings_in_window", "gps.min_dist_m", "handoff.hop")}
+    extra = {k: v for k, v in a.items() if k in EXTRA}
     spans.setdefault(rid, {}).setdefault(cid, []).append(
         [name, kind, agent, round(start), round(dur), status, json.dumps(out, default=str)[:180] if out is not None else "", dg, extra])
 
@@ -44,10 +47,11 @@ for ag, vs in PROMPTS.items():
         registry.append({"agent": ag, "version": v, "hash": phash(ag, v), "text": text,
                          "runs": [r["id"] for r in runs if r["prompts"].get(ag) == pref]})
 
-ds = json.load(open("out_dev/dataset.json"))
+ds = json.load(open(os.environ.get("DEVOBS_DATA", "out_dev/dataset.json"), encoding="utf-8"))
 data = {"runs": runs, "cases": cases, "spans": spans, "registry": registry,
         "dataset": {"n": len(ds), "sources": dict(Counter(e["source"] for e in ds)),
-                    "categories": dict(Counter(e["truth"]["category"] for e in ds))}}
+                    "categories": dict(Counter(e["truth"]["category"] for e in ds))},
+        "source": os.environ.get("MERLION_SOURCE", "fixture")}
 tpl = open("dashboard/dev_template.html", encoding="utf-8").read()
 html = tpl.replace("/*DATA*/null", json.dumps(data, default=str, separators=(",", ":")).replace("</", "<\\/"))
 open("out_dev/dev_dashboard.html", "w", encoding="utf-8").write(html)

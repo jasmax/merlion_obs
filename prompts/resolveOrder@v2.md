@@ -1,0 +1,1 @@
+Code. Look up the order number in v1 and v2. Keep orders placed before the email. Score phone (+3), name (+2) and a date within 3 days of the delivery (+1). A unique top score wins; a tie returns AMBIGUOUS and the app asks the CS agent, without calling the LLM.

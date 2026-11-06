@@ -1,77 +1,119 @@
-# Connecting GitHub, Claude, CircleCI and Railway
+# Connecting GitHub, OpenAI, Langfuse, GitHub Actions and Railway
 
 ```
- push ─▶ GitHub ─▶ CircleCI: evals + regression gate ──(main only, gate passed)──▶ Railway: dashboards
-                        │                                                              │
-                        └── Claude API (replay cache keeps diffs exact)                └── Claude API (live)
+ push ─▶ GitHub ─▶ GitHub Actions: evals + regression gate ──(main, CI passed)──▶ Railway "Wait for CI": dashboards
+                          │                                                          │
+                          └── OpenAI (sim by default; replay cache keeps diffs exact) └── merlion_clean (fixture or MySQL)
+ traces ─▶ Langfuse Cloud (python -m merlion_obs.otlp out/traces.db --push)
 ```
 
-Order matters: GitHub first (the others connect to it), then Claude keys, CircleCI, Railway, and finally the Railway token back into CircleCI.
+Set things up in this order: GitHub first, because Actions and Railway connect to it. Then the OpenAI key and the data, then Langfuse, then Railway.
 
 ## 1. GitHub
 
 ```bash
 cd merlion-obs
-git init -b main && git add -A && git commit -m "Merlion observability stacks"
-gh repo create merlion-obs --private --source . --push      # or create it on github.com and `git remote add origin … && git push -u origin main`
+git add -A && git commit -m "Align with team architecture: OpenAI, GitHub Actions, Langfuse, merlion_clean"
+git push -u origin main
 ```
 
-`.gitignore` already keeps out generated output (`out/`, `out_dev/`), SQLite files, the Claude response cache and `.env`.
+`.gitignore` already keeps out generated output (`out/`, `out_dev/`), SQLite files (including the OpenAI response cache) and `.env`.
 
-After CircleCI's first run on a PR (step 3), protect `main`: **Settings → Branches → Add rule** for `main` → *Require status checks to pass* → pick the CircleCI `gate` check. Merges are then blocked when the gate fails.
+After the first workflow run on a pull request, protect `main`:
 
-## 2. Claude API
+1. Go to **Settings → Branches → Add rule** for `main`.
+2. Select *Require status checks to pass*.
+3. Pick the `gate` check.
 
-1. Create a key at **platform.claude.com → API keys**. Set a monthly spend limit in the console while you are testing.
-2. Locally: put `ANTHROPIC_API_KEY=sk-ant-…` in `.env` (ignored by git) and `pip install -r requirements.txt`.
-3. Swap simulated calls for real ones with `merlion_obs/llm.py`. Inside each existing span:
+Merges are then blocked whenever the gate fails.
 
-   ```python
-   from merlion_obs.llm import claude
-   with self.tracer.span("router.classify", "llm") as s:
-       text = claude(s, "sonnet", system=PROMPTS["router"]["v2"], user=email["body"],
-                     prompt_ref=ref("router", "v2"))
+## 2. OpenAI API
+
+1. Put the team key from the 31 Oct briefing in `.env` as `OPENAI_API_KEY=...`. `.env` is git-ignored.
+2. Find out which models the key allows:
+
+   ```bash
+   curl https://api.openai.com/v1/models -H "Authorization: Bearer $OPENAI_API_KEY"
    ```
 
-   Tokens, cost, model ID and prompt hash land on the span automatically, so both dashboards keep working.
-4. Models: `claude-sonnet-5-5` ($2 / $10 per M tokens) and `claude-haiku-5-5` ($0.10 / $0.50). Don't pass `temperature`, `top_p` or `top_k`: these models return a 400 error if you do.
-5. Because outputs aren't fixed by temperature, CI runs with `LLM_MODE=replay`: unchanged requests are served from a recorded cache, so only agents whose prompt, model or input changed make new calls. Production uses `LLM_MODE=live`.
+   Then point the aliases at them: `OPENAI_MODEL_MINI` (default `gpt-4o-mini`) and `OPENAI_MODEL_NANO` (default `gpt-4.1-nano`).
+3. Set `LLM_PRICES` to the real per-token pricing. Until then, every cost is labelled an estimate.
+4. Choose a mode with `LLM_MODE`:
 
-## 3. CircleCI
+   | Mode | Behaviour | Use it for |
+   |---|---|---|
+   | `sim` (default) | Simulates the chat model. Costs nothing. | CI and the demo |
+   | `replay` | Calls OpenAI with real function calling, and serves unchanged requests from `llm_cache.db` | Measuring the real model |
+   | `live` | Always calls OpenAI | The deployed app |
 
-1. Sign in at **circleci.com** with GitHub and authorise the GitHub app.
-2. **Projects → Set up project** → pick `merlion-obs` → choose *use the existing config* on `main` (it reads `.circleci/config.yml`).
-3. **Organization Settings → Contexts → Create context** named `merlion`, with these variables:
-   - `ANTHROPIC_API_KEY` (from step 2; only used once real calls are wired in)
-   - `RAILWAY_TOKEN` (from step 4, added after Railway exists)
-4. Every push now runs `ci_gate.sh`:
-   - production evals (`merlion_obs.evals`)
-   - main's code evaluated from a separate checkout as the baseline
-   - this commit evaluated and gated against it: accuracy, loops, cost, cases newly broken vs main
-   - both dashboards saved under the job's **Artifacts** tab (`dashboards/production.html`, `dashboards/dev.html`)
-5. On `main`, once `gate` passes, the `deploy` job ships to Railway.
+   The key has a hard spending cap, so try one email in `replay` before running all 120.
 
-## 4. Railway
+## 3. The data: `merlion_clean`
 
-1. **railway.com → New Project → Empty project**, then add an **Empty service** named `merlion-obs`. Leave it unconnected to GitHub: Railway's *Wait for CI* only waits for GitHub Actions, not CircleCI, so CircleCI does the deploying after the gate.
-2. Service **Variables**:
-   - `OPS_DASH_USER`, `OPS_DASH_PASS` (required; protects `/`)
-   - `DEV_DASH_USER`, `DEV_DASH_PASS` (optional; if unset, `/dev` reuses ops creds)
-   - `ENABLE_DEV_DASHBOARD=true` (set `false` if you do not want `/dev` exposed on the public internet)
-   - `ANTHROPIC_API_KEY` and `LLM_MODE=live` (once the agent makes real calls)
-3. **Settings → Networking → Generate domain** gives you a URL. The service serves:
-   - `/` production dashboard
-   - `/dev` developer dashboard
-   - `/health` health check
+By default everything runs on the synthetic fixture.
 
-   `railway.json` sets the start command, health check and restart policy. Railpack detects Python from `requirements.txt` and `.python-version`.
-4. **Project Settings → Tokens → create a project token** for the production environment. Paste it into the CircleCI `merlion` context as `RAILWAY_TOKEN`.
-5. Push to `main`. CircleCI runs the gate and then `railway up --ci --service merlion-obs`.
-6. Dashboards build automatically. `out/` and `out_dev/` are gitignored, so a deploy ships without them. `server.py` starts serving right away (so `/health` passes) and runs `run_demo.py`, `build_dashboard.py`, `simulate_dev.py` and `build_dev_dashboard.py` in the background. `/` is ready after about 40s and `/dev` after about 75s. Until then they return *"still being built"*. If a step fails, the page shows the error, and the Railway deploy logs show it too (`build failed: …`).
+To use the real database, add the same settings the ingestion scripts use (`DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`; see the team repo's `docs/dev-setup.md`) and set `MERLION_SOURCE=mysql`. You can use `MYSQL_URL` instead of the `DB_*` settings. `DB_NAME` defaults to `merlion_clean`.
 
-7. When real traces start arriving, attach a **volume** mounted at `/app/out` so the SQLite trace store survives redeploys (Railway sets `RAILWAY_VOLUME_MOUNT_PATH` for you).
+Then label the real emails:
+
+```bash
+MERLION_SOURCE=mysql python -m merlion_obs.dataset init   # writes golden/labels.json, one row per email
+```
+
+- For each email, fill in `system_version`, `order_id`, `category` and `resolution` (`amount` where there is one).
+- The file holds IDs and verdicts only. Keep names, phones and addresses out of `notes`, because the file is committed.
+- Label at least 20 emails, including the corporate-account emails (the refusal cases). The eval gate needs both.
+
+## 4. GitHub Actions
+
+`.github/workflows/ci.yml` runs on every push and pull request. Pushing it is all the setup it needs. Each run:
+
+- runs the production evals on the golden set (`merlion_obs.evals`);
+- evaluates main's code from a separate checkout, as the baseline;
+- evaluates this commit and gates it against main: accuracy, order accuracy, loops, hidden conflicts, latency, cost, and cases newly broken;
+- saves both dashboards as the run's **dashboards** artifact.
+
+Optional settings, under **Settings → Secrets and variables → Actions**:
+- variable `LLM_MODE=replay`
+- secret `OPENAI_API_KEY`
+
+Together they evaluate the real model in CI. The response cache is kept between runs, so only changed prompts cost tokens.
+
+## 5. Langfuse Cloud
+
+1. On **cloud.langfuse.com**, create a project and go to **Settings → API keys**.
+2. Put the keys in `.env`: `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and `LANGFUSE_HOST` (default `https://cloud.langfuse.com`; use the region URL your project shows).
+3. Run `python run_demo.py`, then `python -m merlion_obs.otlp out/traces.db --push`.
+
+Each trace opens with its steps, tool calls and model calls nested. Model, tokens and estimated cost are on each generation, tagged by release (`v0.1`, `v0.2`). Check the weekly estimated spend there against the team budget.
+
+## 6. Railway
+
+1. On **railway.com**, go to **New Project → Deploy from GitHub repo** and pick `merlion-obs`.
+2. In the service's **Settings**, turn on **Wait for CI**. Railway then deploys a commit on `main` only after the GitHub Actions run passes, so no deploy token or deploy job is needed.
+3. Under the service's **Variables**, set:
+
+   | Variable | Required? | Notes |
+   |---|---|---|
+   | `OPS_DASH_USER`, `OPS_DASH_PASS` | Yes | Protect `/` |
+   | `DEV_DASH_USER`, `DEV_DASH_PASS` | No | If unset, `/dev` reuses the ops login |
+   | `ENABLE_DEV_DASHBOARD` | No (default `true`) | Set `false` to keep `/dev` off the public internet |
+   | `MERLION_SOURCE=mysql` and `MYSQL_URL=${{MySQL.MYSQL_URL}}`, plus `DB_NAME=merlion_clean` | For real data | Uses the project's MySQL service |
+
+   With real data, the dashboards show order numbers and driver codes, though never names, phones or addresses. Keep the logins set.
+4. Go to **Settings → Networking → Generate domain** to get a URL. The service serves:
+   - `/` the production dashboard
+   - `/dev` the developer dashboard
+   - `/health` the health check
+
+   `railway.json` sets the start command, the health check and the restart policy. Railpack detects Python from `requirements.txt` and `.python-version`.
+5. The dashboards build automatically:
+   - `out/` and `out_dev/` are git-ignored, so a deploy ships without them.
+   - `server.py` starts serving right away (so `/health` passes) and runs `run_demo.py`, `build_dashboard.py`, `simulate_dev.py` and `build_dev_dashboard.py` in the background.
+   - On the fixture, `/` is ready after about 20 s and `/dev` after about 35 s. Until then they return *"still being built"*.
+   - If a step fails, the page shows the error, and so do the deploy logs (`build failed: …`).
 
 ## Check it works
 
-- Open a PR that changes `configs/main.json` to `configs/policy-haiku.json`'s contents. CircleCI should go red with `newly_broken 11` and GitHub should block the merge.
-- Merge a passing change. Railway should start successfully and require login for `/` and `/dev` (if enabled)
+- **The gate blocks a bad change.** Open a PR that replaces `configs/main.json` with the contents of `configs/chat-nano.json`. The `gate` check should go red: `newly_broken 30`, `resolution_accuracy 0.74`. GitHub should block the merge.
+- **A good change deploys.** Merge a passing change. Railway should deploy after CI turns green, and ask for a login on `/` and `/dev`.

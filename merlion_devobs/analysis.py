@@ -16,10 +16,13 @@ def _run(db, rid):
 
 
 def first_divergence(db, a, b, case_id):
-    """The first agent step whose output, or whose place in the control flow, differs between two runs."""
+    """The first pipeline step whose output, or whose place in the control flow, differs between two runs.
+    Steps are compared in the order they finish: intake, resolveOrder, the chat model's tool choice,
+    each tool call, the chat answer, answer_check."""
     def seq(rid):
         return db.execute(
-            "SELECT agent, out_digest FROM spans WHERE run_id=? AND case_id=? AND kind='agent' AND name=agent ORDER BY start_ms",
+            "SELECT agent, out_digest FROM spans WHERE run_id=? AND case_id=? AND ((kind='agent' AND name=agent) "
+            "OR (kind='tool' AND agent='tools') OR kind='llm') AND agent != 'pipeline' ORDER BY start_ms + dur_ms, start_ms",
             (rid, case_id)).fetchall()
     sa, sb = seq(a), seq(b)
     for i in range(max(len(sa), len(sb))):

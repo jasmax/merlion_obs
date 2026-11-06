@@ -134,13 +134,13 @@ ol.steps { margin: 0; padding-left: 20px; display: grid; gap: 8px; max-width: 75
 
 <header class="top"><div class="wrap">
   <div>
-    <div class="eyebrow">Merlion Logistics · Complaint triage agent</div>
-    <h1>Triage agent observability</h1>
+    <div class="eyebrow">Merlion Express · Complaint triage app · production</div>
+    <h1>Triage quality and guardrails</h1>
     <p class="sub" id="period"></p>
   </div>
   <div style="display:grid;gap:8px;justify-items:start">
-    <div class="legend"><span><i class="sw" style="background:var(--v1)"></i>v0.1 naive build</span><span><i class="sw" style="background:var(--v2)"></i>v0.2 current</span><span><i class="sw" style="background:var(--inc);outline:1px solid var(--crit)"></i>Rate-card OCR incident</span></div>
-    <div class="synthetic">Synthetic data that reproduces the client brief's landmines. Not Merlion's real records.</div>
+    <div class="legend"><span><i class="sw" style="background:var(--v1)"></i>v0.1 naive build</span><span><i class="sw" style="background:var(--v2)"></i>v0.2 current</span><span><i class="sw" style="background:var(--inc);outline:1px solid var(--crit)"></i>OpenAI API degraded</span></div>
+    <div class="synthetic" id="srcnote"></div>
   </div>
 </div></header>
 <nav class="sec" aria-label="Sections"><div class="wrap">
@@ -155,40 +155,40 @@ ol.steps { margin: 0; padding-left: 20px; display: grid; gap: 8px; max-width: 75
 
   <section id="alerts">
     <div class="head"><div><div class="eyebrow">Daily rule evaluation</div><h2>Alerts fired</h2>
-      <p class="sub">Each square is a day from 5 Oct to 1 Nov. Red pages someone; amber opens a ticket.</p></div></div>
+      <p class="sub" id="alertSub">Each square is a day. Red pages someone; amber opens a ticket.</p></div></div>
     <div class="panel tbl"><table id="alertTbl"></table></div>
   </section>
 
   <section id="trends">
     <div class="head"><div><div class="eyebrow">Production, per day</div><h2>Quality, latency and cost over time</h2>
-      <p class="sub">v0.2 went live on 19 Oct after the offline evals caught v0.1's failures. The incident band marks 28–29 Oct, when the rate-card OCR service slowed down and timed out.</p></div></div>
+      <p class="sub" id="trendSub"></p></div></div>
     <div class="charts" id="charts"></div>
   </section>
 
   <section id="guardrails">
     <div class="head"><div><div class="eyebrow">Online checks on every trace · no ground truth needed</div><h2>Guardrails</h2>
-      <p class="sub">The first three checks target the three landmines in Priya's brief. They run on what production can see: the trace's spans and the ops database.</p></div></div>
+      <p class="sub">The first five checks target landmines from the team's data audit (T01, T16, T04, T23, T24). They run on what production can see: the trace's spans and merlion_clean. No labels needed.</p></div></div>
     <div class="panel tbl"><table id="checkTbl"></table></div>
     <div class="panel" id="dq"></div>
   </section>
 
   <section id="evals">
-    <div class="head"><div><div class="eyebrow">Offline · 90 labelled emails · runs in CI</div><h2>Release gates</h2>
-      <p class="sub">The same golden set runs against every prompt, model or tool change. Any failed gate blocks the deploy.</p></div></div>
+    <div class="head"><div><div class="eyebrow" id="evalEyebrow">Offline · labelled emails · runs in GitHub Actions</div><h2>Release gates</h2>
+      <p class="sub">The same golden set runs against every prompt, model or tool change. Any failed gate blocks the merge, and Railway waits for CI before it deploys.</p></div></div>
     <div class="grid2">
       <div class="panel tbl"><table id="evalTbl"></table></div>
-      <div class="panel"><h3>Resolution accuracy by complaint type</h3><p class="why" style="margin:2px 0 14px">v0.1 misses "not received" claims when it reads GPS in the wrong timezone, and legacy refunds when it picks the wrong system's order.</p><div class="bars" id="catBars"></div></div>
+      <div class="panel"><h3>Resolution accuracy by complaint type</h3><p class="why" style="margin:2px 0 14px">v0.1 re-delivers "not received" claims the GPS disproves (it reads the GPS clock 8 h off) and picks the v2 order when the customer meant v1.</p><div class="bars" id="catBars"></div></div>
     </div>
     <div class="panel tbl"><h3 style="margin-bottom:8px">Sample eval failures</h3><table id="failTbl"></table></div>
   </section>
 
   <section id="drivers">
     <div class="head"><div><div class="eyebrow">Priya's weekly view</div><h2>Complaints by driver and zone</h2>
-      <p class="sub">Attributed by the agent from the order it resolved. Weeks of 5 and 12 Oct ran on v0.1, so its wrong order matches and misread postal codes also skew this view.</p></div>
+      <p class="sub">Attributed from the order the app resolved, as the Spring weekly report does from complaint_emails.resolved_*. Weeks before the v0.2 deploy ran on v0.1, so its wrong order matches and postal-sector zones also skew this view.</p></div>
       <div class="seg" role="group" aria-label="Count"><button id="hAll" aria-pressed="true">All complaints</button><button id="hSub" aria-pressed="false">Substantiated only</button></div></div>
     <div class="grid2">
       <div class="panel tbl"><table class="heat" id="heat"></table></div>
-      <div class="panel tbl"><h3 style="margin-bottom:4px">Zone attribution vs ground truth</h3><p class="why" style="margin:0 0 8px">v2 complaints per zone. "True" comes from the synthetic labels; the agent columns come from its traces.</p><table id="zoneTbl"></table></div>
+      <div class="panel tbl"><h3 style="margin-bottom:4px">Zone attribution vs ground truth</h3><p class="why" style="margin:0 0 8px">Complaints per rate-card zone. "True" comes from the labels; the app columns come from its traces.</p><table id="zoneTbl"></table></div>
     </div>
   </section>
 
@@ -206,12 +206,12 @@ ol.steps { margin: 0; padding-left: 20px; display: grid; gap: 8px; max-width: 75
   <section id="wiring">
     <div class="head"><div><div class="eyebrow">From demo to production</div><h2>Wiring it to the real agent</h2></div></div>
     <div class="panel"><ol class="steps">
-      <li>Replace <code>data.build()</code> with a loader for <code>sql/merlion_ops.sql</code> and <code>logs/gps_pings_sample.jsonl</code>. The agent and checks only depend on the table shapes.</li>
-      <li>Keep the <code>with tracer.span(...)</code> blocks in <code>agent.py</code> and swap the simulated bodies for real model and tool calls. Token counts come from the API response.</li>
-      <li>Hand-label Priya's 90 sample emails into <code>golden_set.json</code>, then run <code>python -m merlion_obs.evals --version vX</code> in CI. A non-zero exit blocks the merge.</li>
-      <li>Run <code>run_checks()</code> after each trace, or every few minutes, and post <code>alerts.evaluate()</code> output to the CS team's channel.</li>
-      <li>Record the CS reviewer's final decision in <code>feedback</code>. Override rate is the only quality signal that needs no labels.</li>
-      <li>When you outgrow SQLite, post <code>out/otlp_traces.json</code> to any OpenTelemetry collector (Phoenix, Langfuse, Jaeger, Tempo). The span names and attributes carry over.</li>
+      <li>Point the stack at the real data: <code>MERLION_SOURCE=mysql</code> with the same <code>DB_*</code> settings as the ingestion scripts (or Railway's <code>MYSQL_URL</code>). Tools and checks read the nine <code>merlion_clean</code> tables.</li>
+      <li>Label the 90 real emails in <code>golden/labels.json</code> (<code>python -m merlion_obs.dataset init</code>). IDs and verdicts only, no personal data. Include the corporate-account emails: they are the refusal cases.</li>
+      <li>Give the Spring tools the same span names and attributes (<code>resolveOrder.query</code>, <code>getGpsTrail</code> with <code>gps.epoch_window</code>, …) through Micrometer and OpenTelemetry, so these checks can run on the app's own Langfuse traces.</li>
+      <li>Run <code>python -m merlion_obs.evals --version vX</code> in GitHub Actions. A non-zero exit blocks the merge; Railway's "Wait for CI" holds the deploy.</li>
+      <li>Record the CS agent's final decision in <code>feedback</code>. Override rate is the one quality signal that needs no labels.</li>
+      <li><code>python -m merlion_obs.otlp out/traces.db --push</code> sends the traces to Langfuse Cloud. Check the weekly estimated spend there against the team budget.</li>
     </ol></div>
   </section>
 </div></main>
@@ -229,7 +229,10 @@ const tip = $("#tip");
 function showTip(e, html) { tip.innerHTML = html; tip.hidden = false; const w = tip.offsetWidth, h = tip.offsetHeight; let x = e.clientX + 14, y = e.clientY + 14; if (x + w > innerWidth - 8) x = e.clientX - w - 14; if (y + h > innerHeight - 8) y = e.clientY - h - 14; tip.style.left = x + "px"; tip.style.top = y + "px"; }
 const hideTip = () => tip.hidden = true;
 
-$("#period").textContent = `${day(D.period[0])} – ${day(D.period[1])} 2026 · ${D.totals.traces} complaints traced · ${D.totals.spans.toLocaleString()} spans · ${D.totals.redactions} PII values redacted before storage`;
+$("#period").textContent = `${day(D.period[0])} – ${day(D.period[1])} 2026 · ${D.totals.traces} complaints traced · ${D.totals.spans.toLocaleString()} spans · ${D.totals.redactions} PII values masked before storage`;
+$("#srcnote").textContent = D.source.kind === "fixture" ? "Synthetic merlion_clean that reproduces the data audit's findings. Not Merlion's real records." : `Real data: ${D.source.db}, ${D.source.emails} emails, ${D.source.labelled} labelled. v0.1 is replayed on the first half of the days for comparison.`;
+$("#alertSub").textContent = `Each square is a day from ${day(D.period[0])} to ${day(D.period[1])}. Red pages someone; amber opens a ticket.`;
+$("#trendSub").textContent = `v0.2 went live on ${day(D.events.deploy_v02)} after the offline evals caught v0.1's failures.` + (D.events.incident ? ` The red band marks ${day(D.events.incident[0])}–${day(D.events.incident[1])}, when the OpenAI API slowed down and timed out; the app escalated instead of guessing.` : "");
 
 // ---------- KPIs (last 7 days vs v0.1 period) ----------
 (function () {
@@ -243,7 +246,7 @@ $("#period").textContent = `${day(D.period[0])} – ${day(D.period[1])} 2026 · 
     ["CS overrides of the agent", sum(last, "override_rate"), v1.override_rate, v => pct(v), true],
     ["Handed back to a human", sum(last, "escalation_rate"), v1.escalation_rate, v => pct(v), true],
     ["Worst daily p95 latency", p95, v1.p95_latency_s, v => v.toFixed(1) + " s", true],
-    ["Model cost per complaint", sum(last, "cost_per_complaint"), v1.cost_per_complaint, v => "US$" + v.toFixed(3), true],
+    ["Est. model cost per complaint", sum(last, "cost_per_complaint"), v1.cost_per_complaint, v => "US$" + v.toFixed(4), true],
   ];
   $("#kpis").innerHTML = items.map(([l, v, b, f, lowGood]) => {
     let cmp = "";
@@ -269,7 +272,7 @@ $("#period").textContent = `${day(D.period[0])} – ${day(D.period[1])} 2026 · 
       <td class="num">${on.size}</td><td>${vs.map(vchip).join(" ") || '<span class="why">never</span>'}</td>
       <td><div class="strip">${strip}</div></td></tr>`;
   });
-  $("#alertTbl").innerHTML = `<thead><tr><th>Rule</th><th>Severity</th><th>Condition</th><th class="num">Days</th><th>Version</th><th>5 Oct → 1 Nov</th></tr></thead><tbody>${rows.join("")}</tbody>`;
+  $("#alertTbl").innerHTML = `<thead><tr><th>Rule</th><th>Severity</th><th>Condition</th><th class="num">Days</th><th>Version</th><th>${day(D.period[0])} → ${day(D.period[1])}</th></tr></thead><tbody>${rows.join("")}</tbody>`;
   $("#alertTbl").addEventListener("mousemove", e => { const t = e.target.dataset?.t; t ? showTip(e, t) : hideTip(); });
   $("#alertTbl").addEventListener("mouseleave", hideTip);
 })();
@@ -280,8 +283,8 @@ const CHARTS = [
   ["override_rate", "CS override rate", "Share of recommendations the CS reviewer changed.", v => pct(v, 0), 0.12],
   ["p95_latency_s", "p95 latency", "Seconds from email in to recommendation out.", v => v.toFixed(0) + "s", 12],
   ["tool_error_rate", "Tool error rate", "Share of complaints with at least one failed tool call.", v => pct(v, 0), 0.05],
-  ["escalation_rate", "Escalation rate", "Share handed back to a human because evidence was missing.", v => pct(v, 0), 0.15],
-  ["cost_usd", "Daily model spend", "US$ per day across all model calls.", v => "$" + v.toFixed(2), 1.0],
+  ["escalation_rate", "Handed back to a human", "Order ambiguous, data missing, or the LLM unavailable.", v => pct(v, 0), 0.15],
+  ["cost_usd", "Daily model spend", "Estimated US$ per day across all OpenAI calls.", v => "$" + v.toFixed(3), 0.03],
 ];
 function drawCharts() {
   const host = $("#charts");
@@ -294,11 +297,11 @@ function lineChart(el, [key, title, , fmt, thr]) {
   const max = Math.max(thr * 1.25, ...rows.map(r => r[key])) * 1.08;
   const x = i => m.l + (i + .5) * iw / n, y = v => m.t + ih - v / max * ih;
   const dep = rows.findIndex(r => r.day >= D.events.deploy_v02);
-  const i0 = rows.findIndex(r => r.day === D.events.incident[0]), i1 = rows.findIndex(r => r.day === D.events.incident[1]);
+  const i0 = D.events.incident ? rows.findIndex(r => r.day === D.events.incident[0]) : -1, i1 = D.events.incident ? rows.findIndex(r => r.day === D.events.incident[1]) : -1;
   const ticks = [0, max / 2 / 1.08, max / 1.08].map(v => +v.toPrecision(2));
   let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="${esc(title)} per day">`;
   s += `<rect x="${m.l}" y="${m.t}" width="${x(dep) - iw / n / 2 - m.l}" height="${ih}" fill="var(--band)"/>`;
-  s += `<rect x="${x(i0) - iw / n / 2}" y="${m.t}" width="${(i1 - i0 + 1) * iw / n}" height="${ih}" fill="var(--inc)"/>`;
+  if (i0 >= 0 && i1 >= 0) s += `<rect x="${x(i0) - iw / n / 2}" y="${m.t}" width="${(i1 - i0 + 1) * iw / n}" height="${ih}" fill="var(--inc)"/>`;
   ticks.forEach(t => { s += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${y(t)}" y2="${y(t)}"/><text x="${m.l - 6}" y="${y(t) + 3.5}" text-anchor="end">${fmt(t)}</text>`; });
   s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(thr)}" y2="${y(thr)}" stroke="var(--crit)" stroke-width="1" stroke-dasharray="5 3"/>`;
   s += `<text x="${W - m.r}" y="${y(thr) - 4}" text-anchor="end" style="fill:var(--crit-ink)">alert ${fmt(thr)}</text>`;
@@ -327,15 +330,19 @@ let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(dra
 // ---------- Guardrails ----------
 (function () {
   const meta = {
-    order_disambiguation: ["critical", "Order numbers repeat across v1 and v2", "When a number matches orders in both systems, the agent must pick one using the customer email and the date in the complaint."],
-    timezone_alignment: ["critical", "GPS and delivery times disagree", "GPS pings are UTC; delivery times are naive Singapore time. The check looks for pings at the address 8 hours either side of the window the agent used."],
-    postal_code_valid: ["warning", "Postal codes that are not 6 digits", "The agent must not geocode or zone a delivery from an invalid code. Falling back to the street address passes."],
-    evidence_grounding: ["critical", "Rejections need evidence", "Rejecting a 'not received' claim needs a POD scan and a GPS ping within 100 m of the address."],
-    amount_within_policy: ["critical", "Money out", "A refund or compensation needs an amount between S$0 and the S$100 damage cap."],
-    pii_leak: ["critical", "Customer PII in traces", "Emails, SG phone numbers and NRIC/FIN must be redacted before a span is stored."],
-    tool_errors: ["warning", "Tool reliability", "Any span that raised an error or timed out."],
+    order_disambiguation: ["critical", "Order numbers repeat across v1 and v2 (T01, T26)", "When a number matches a v1 and a v2 order, resolveOrder must decide on phone, name and date, or ask the CS agent."],
+    timezone_alignment: ["critical", "GPS clock is 8 h slow (T16)", "Singapore time = ts_epoch + 16 h. The check recomputes the GPS window's centre and compares it with deliveries.delivered_time."],
+    zone_from_town: ["critical", "Postal codes say nothing about location (T04)", "The zone must come from orders.zone (the town). Critical when the rate used the wrong zone, a warning when only the weekly report would."],
+    conflict_disclosed: ["critical", "POD and database disagree (T23)", "Every conflict a tool returned (remark, COD) must be shown on the case card with both sources."],
+    honest_gaps: ["critical", "No rate card before 1 Apr 2026 (T24)", "An empty tool result means 'the data does not show this'. Pricing an older order off the April card is a guess."],
+    evidence_grounding: ["critical", "Rejections need evidence", "Rejecting a 'not received' claim needs a POD scan or a GPS ping in the delivery town."],
+    citations_present: ["critical", "Every verdict cites its sources", "A verdict with no table, file or scan reference never reaches the CS agent."],
+    amount_within_policy: ["critical", "Money out", "A refund or compensation needs an amount between S$0 and the S$30 cap (assumed policy)."],
+    refusal_without_llm: ["critical", "Out-of-scope requests (T27)", "Corporate-account emails are refused by code, with no LLM call."],
+    pii_leak: ["critical", "Personal data in traces (T28, PDPA)", "Emails, SG phone numbers and NRIC/FIN must be masked before a span is stored."],
+    tool_errors: ["warning", "Tool and model reliability", "Any span that raised an error or timed out."],
     latency_budget: ["warning", "Latency budget", "Whole triage under 12 seconds."],
-    cost_budget: ["warning", "Cost budget", "Model spend under US$0.03 per complaint."],
+    cost_budget: ["warning", "Cost budget", "Estimated model spend under US$0.003 per complaint."],
   };
   const V = D.by_version;
   const cell = (v, c) => { const f = V[v].check_fail[c] || 0, n = V[v].check_n[c] || 0;
@@ -343,24 +350,27 @@ let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(dra
   $("#checkTbl").innerHTML = `<thead><tr><th>Check</th><th>Guards against</th><th>Severity</th><th class="num">v0.1 fails</th><th class="num">v0.2 fails</th></tr></thead><tbody>` +
     Object.entries(meta).map(([c, [sev, what, how]]) => `<tr><td class="mono" style="white-space:nowrap">${c}</td><td><b>${what}</b><div class="why">${how}</div></td><td><span class="chip ${sev}"><i></i>${sev}</span></td>${cell("v0.1", c)}${cell("v0.2", c)}</tr>`).join("") + "</tbody>";
   const q = D.data_quality;
-  $("#dq").innerHTML = `<h3 style="margin-bottom:8px">How often the landmines show up in real traffic</h3>
-    <div class="cmpbox"><div><div class="eyebrow">Order collisions</div><div style="font:600 22px var(--f-display)">${pct(q.collisions / q.lookups, 0)}</div>of ${q.lookups} order lookups matched an order in both v1 and v2.</div>
-    <div><div class="eyebrow">Invalid postal codes</div><div style="font:600 22px var(--f-display)">${pct(q.bad_postal / q.v2_lookups, 1)}</div>of ${q.v2_lookups} v2 deliveries carry a code that is not a valid 6-digit SG code.</div>
-    <div><div class="eyebrow">Timezone offset</div><div style="font:600 22px var(--f-display)">+8 h</div>between UTC GPS pings and delivery times stored as naive local time.</div></div>`;
+  $("#dq").innerHTML = `<h3 style="margin-bottom:8px">How often the landmines show up in traffic</h3>
+    <div class="cmpbox"><div><div class="eyebrow">Order collisions</div><div style="font:600 22px var(--f-display)">${q.lookups ? pct(q.collisions / q.lookups, 0) : "–"}</div>of ${q.lookups} order lookups matched an order in both v1 and v2.</div>
+    <div><div class="eyebrow">POD vs database</div><div style="font:600 22px var(--f-display)">${q.pods ? pct(q.pod_conflicts / q.pods, 0) : "–"}</div>of ${q.pods} POD scans looked up disagreed with the delivery record.</div>
+    <div><div class="eyebrow">No GPS near the delivery</div><div style="font:600 22px var(--f-display)">${q.gps_calls ? pct(q.gps_empty / q.gps_calls, 0) : "–"}</div>of ${q.gps_calls} GPS checks found no ping within 30 min, so the app said so instead of guessing.</div>
+    <div><div class="eyebrow">GPS clock offset</div><div style="font:600 22px var(--f-display)">+16 h</div>from ts_epoch to Singapore time (audit T16), not the +8 h a correct clock needs.</div></div>`;
 })();
 
 // ---------- Evals ----------
 (function () {
+  if (!D.evals) { $("#evals").querySelector(".grid2").innerHTML = `<div class="panel"><p class="why">No labelled emails yet. Fill golden/labels.json (python -m merlion_obs.dataset init) to run the release gates.</p></div>`; $("#failTbl").closest(".panel").hidden = true; return; }
   const E = D.evals, a = E["v0.1"], b = E["v0.2"];
-  const rows = [["order_accuracy", "Right order found", ">= 95%", v => pct(v)], ["resolution_accuracy", "Right resolution", ">= 90%", v => pct(v)],
-    ["wrongful_reject_rate", "Valid claims wrongly rejected", "<= 2%", v => pct(v)], ["critical_check_fail_rate", "Critical guardrail failures", "<= 2%", v => pct(v)],
+  $("#evalEyebrow").textContent = `Offline · ${b.n} labelled emails, ${b.refusals_in_set} of them refusals · runs in GitHub Actions`;
+  const rows = [["eval_size", "Eval questions", ">= 20", v => v], ["order_accuracy", "Right order found (or asked)", ">= 95%", v => pct(v)], ["resolution_accuracy", "Right resolution", ">= 90%", v => pct(v)],
+    ["wrongful_reject_rate", "Valid claims wrongly rejected", "<= 2%", v => pct(v)], ["refusal_accuracy", "Out-of-scope requests refused", "100%", v => pct(v)], ["critical_check_fail_rate", "Critical guardrail failures", "<= 2%", v => pct(v)],
     ["p95_latency_s", "p95 latency", "<= 12 s", v => v.toFixed(1) + " s"], ["amount_accuracy", "Right amount, when right action", "tracked", v => pct(v)],
-    ["escalation_rate", "Escalated", "tracked", v => pct(v)], ["mean_cost_usd", "Cost per complaint", "tracked", v => "US$" + v.toFixed(3)]];
+    ["escalation_rate", "Handed back to a human", "tracked", v => pct(v)], ["mean_cost_usd", "Est. cost per complaint", "tracked", v => "US$" + v.toFixed(4)]];
   const c = (m, k, f) => { const g = m.gates[k]; return `<td class="num">${f(m[k])} ${g === undefined ? "" : `<span class="chip ${g ? "pass" : "fail"}"><i></i>${g ? "pass" : "fail"}</span>`}</td>`; };
   $("#evalTbl").innerHTML = `<thead><tr><th>Metric</th><th>Gate</th><th class="num">${vchip("v0.1")}</th><th class="num">${vchip("v0.2")}</th></tr></thead><tbody>` +
     rows.map(([k, l, g, f]) => `<tr><td>${l}</td><td class="mono why">${g}</td>${c(a, k, f)}${c(b, k, f)}</tr>`).join("") +
     `<tr><td><b>Release decision</b></td><td></td><td class="num"><span class="chip ${a.passed ? "pass" : "fail"}"><i></i>${a.passed ? "ship" : "blocked"}</span></td><td class="num"><span class="chip ${b.passed ? "pass" : "fail"}"><i></i>${b.passed ? "ship" : "blocked"}</span></td></tr></tbody>`;
-  const label = {damaged: "Damaged", late: "Late", not_received: "Not received", overcharged: "Overcharged", refund_followup: "Legacy refund"};
+  const label = {damaged: "Damaged", late: "Late", not_received: "Not received", overcharged: "Overcharged", corporate: "Corporate (refuse)", no_number: "No order number", unknown: "Unknown"};
   $("#catBars").innerHTML = Object.keys(a.by_category).map(k => `<div class="row"><div>${label[k]}</div><div class="pair" style="padding-right:44px">
     <div class="b" style="width:${a.by_category[k] * 100}%;background:var(--v1)"><span>${pct(a.by_category[k], 0)}</span></div>
     <div class="b" style="width:${b.by_category[k] * 100}%;background:var(--v2)"><span>${pct(b.by_category[k], 0)}</span></div></div></div>`).join("") +
@@ -381,7 +391,7 @@ function drawHeat() {
   const zone = {}; D.weekly.forEach(r => { if (r.dim === "driver") zone[r.key] = zone[r.key]; });
   const tot = d => weeks.reduce((s, w) => s + get(w, d), 0);
   const order = drivers.sort((p, q) => tot(q) - tot(p));
-  $("#heat").innerHTML = `<thead><tr><th>Driver</th>${weeks.map(w => `<th class="num">wk ${day(w)}<div style="margin-top:3px">${vchip(w >= "2026-10-19" ? "v0.2" : "v0.1")}</div></th>`).join("")}<th class="num">Total</th></tr></thead><tbody>` +
+  $("#heat").innerHTML = `<thead><tr><th>Driver</th>${weeks.map(w => `<th class="num">wk ${day(w)}<div style="margin-top:3px">${vchip(w >= D.events.deploy_v02 ? "v0.2" : "v0.1")}</div></th>`).join("")}<th class="num">Total</th></tr></thead><tbody>` +
     order.map(d => `<tr><td class="mono">${d}</td>${weeks.map(w => { const v = get(w, d); return `<td class="cell" style="background:${step(v)};color:${ink(v)}" data-t="${d} · week of ${day(w)}: ${v} ${heatKey === "complaints" ? "complaints" : "substantiated"}">${v || ""}</td>`; }).join("")}<td class="num"><b>${tot(d)}</b></td></tr>`).join("") + "</tbody>";
 }
 drawHeat();
@@ -390,12 +400,12 @@ $("#heat").addEventListener("mouseleave", hideTip);
 [["#hAll", "complaints"], ["#hSub", "substantiated"]].forEach(([id, k]) => $(id).addEventListener("click", () => {
   heatKey = k; $("#hAll").setAttribute("aria-pressed", k === "complaints"); $("#hSub").setAttribute("aria-pressed", k === "substantiated"); drawHeat(); }));
 (function () {
-  const zones = ["Central", "East", "West", "North-East", "North", "UNKNOWN"];
+  const zones = ["Central", "East / North-East", "North / West", "Sentosa / Jurong Island", "Unknown"];
   const g = (arr, v, z) => (arr.find(r => r.version === v && r.zone === z) || {}).n || 0;
   const cell = (v, z) => { const t = g(D.zone_truth, v, z), a = g(D.zone_attr, v, z), d = a - t;
     return `<td class="num">${t}</td><td class="num">${a}${d ? ` <span class="${Math.abs(d) > 0 ? "worse" : ""}">(${d > 0 ? "+" : ""}${d})</span>` : ""}</td>`; };
   $("#zoneTbl").innerHTML = `<thead><tr><th>Zone</th><th class="num">True</th><th class="num">${vchip("v0.1")}</th><th class="num">True</th><th class="num">${vchip("v0.2")}</th></tr></thead><tbody>` +
-    zones.map(z => `<tr><td>${z === "UNKNOWN" ? "Unknown (bad postal code)" : z}</td>${cell("v0.1", z)}${cell("v0.2", z)}</tr>`).join("") + "</tbody>";
+    zones.map(z => `<tr><td>${z === "Unknown" ? "Unknown (postal sector with no town)" : z}</td>${cell("v0.1", z)}${cell("v0.2", z)}</tr>`).join("") + "</tbody>";
 })();
 
 // ---------- Spans ----------
@@ -409,12 +419,12 @@ $("#heat").addEventListener("mouseleave", hideTip);
 
 // ---------- Trace explorer ----------
 (function () {
-  const tagName = {tz: "Timezone misread", order: "Wrong system's order", postal: "Bad postal code", incident: "OCR timeout", ok: "Clean run"};
+  const tagName = {tz: "GPS clock misread", order: "Wrong system's order", conflict: "Conflict hidden", gap: "Guessed a missing rate", zone: "Zone from postal code", incident: "OpenAI timeout", refuse: "Refused without LLM", ok: "Clean run"};
   const X = D.explorer;
   $("#tlist").innerHTML = X.map((t, i) => {
     const bad = t.checks.filter(c => !c.passed);
     return `<button data-i="${i}" aria-pressed="false"><div class="r1">${vchip(t.version)}<b>${tagName[t.tag]}</b></div>
-      <div class="r2">${day(t.day)} · ${esc(t.category.replace("_", " "))} → <span class="mono">${t.resolution}</span>${t.resolution !== t.truth.resolution ? ` <span class="worse">(should be ${t.truth.resolution})</span>` : ""}</div>
+      <div class="r2">${day(t.day)} · ${esc(t.category.replace("_", " "))} → <span class="mono">${t.resolution}</span>${t.truth && t.resolution !== t.truth.resolution ? ` <span class="worse">(should be ${t.truth.resolution})</span>` : ""}</div>
       <div class="r2">${bad.length ? bad.map(c => `<span class="mono worse">${c.check}</span>`).join(", ") : '<span class="better">all checks pass</span>'}</div></button>`;
   }).join("");
   function show(i) {
@@ -428,14 +438,14 @@ $("#heat").addEventListener("mouseleave", hideTip);
         <div class="legend"><span><i class="sw" style="background:var(--accent)"></i>model call</span><span><i class="sw" style="background:var(--ink-2)"></i>tool call</span><span><i class="sw" style="background:var(--crit)"></i>error</span></div></div>
       <div class="cmpbox"><div><div class="eyebrow">Agent (${t.version})</div><b class="mono">${t.resolution}${t.amount ? " S$" + (+t.amount).toFixed(2) : ""}</b><div class="why">${(t.duration_ms / 1000).toFixed(1)} s · US$${t.cost_usd.toFixed(4)}</div></div>
         <div><div class="eyebrow">CS reviewer</div><b class="mono">${t.feedback ? t.feedback.final : "–"}</b><div class="why">${t.feedback ? t.feedback.outcome : ""}</div></div>
-        <div><div class="eyebrow">Ground truth (synthetic label)</div><b class="mono">${t.truth.resolution}${t.truth.amount ? " S$" + (+t.truth.amount).toFixed(2) : ""}</b><div class="why mono">${t.truth.system}:${t.truth.order_no} · ${t.truth.driver_id}</div></div></div>
+        <div><div class="eyebrow">Label</div><b class="mono">${t.truth ? t.truth.resolution + (t.truth.amount ? " S$" + (+t.truth.amount).toFixed(2) : "") : "not labelled"}</b><div class="why mono">${t.truth && t.truth.system ? t.truth.system + ":" + t.truth.order_no + " · " + (t.truth.driver_id || "") : ""}</div></div></div>
       <div class="checks-list">${t.checks.map(c => `<span class="chip ${c.passed ? "pass" : "fail"}" title="${esc(c.detail)}"><i></i>${c.check}</span>`).join("")}</div>
       ${t.checks.filter(c => !c.passed).map(c => `<div class="why"><b class="mono worse">${c.check}</b>: ${esc(c.detail)}</div>`).join("")}
       <div class="wf" id="wf">${wf}</div><pre class="attrs" id="attrs"></pre>`;
     const pick = j => { document.querySelectorAll("#wf button").forEach(b => b.setAttribute("aria-pressed", b.dataset.j == j));
       const s = t.spans[j]; $("#attrs").textContent = JSON.stringify({span: s.name, kind: s.kind, status: s.status, error: s.error || undefined, ...s.attrs}, null, 2); };
     document.querySelectorAll("#wf button").forEach(b => b.addEventListener("click", () => pick(+b.dataset.j)));
-    const firstBad = t.spans.findIndex(s => s.status === "error" || (t.tag === "tz" && s.name === "get_gps_trail") || (t.tag === "order" && s.name === "resolve_order") || (t.tag === "postal" && s.name === "get_delivery_history"));
+    const firstBad = t.spans.findIndex(s => s.status === "error" || (t.tag === "tz" && s.name === "getGpsTrail") || (t.tag === "order" && s.name === "resolveOrder.query") || (t.tag === "conflict" && s.name === "chat") || (t.tag === "gap" && s.name === "getRate") || (t.tag === "zone" && s.name === "getDeliveryHistory") || (t.tag === "refuse" && s.name === "intake"));
     pick(firstBad >= 0 ? firstBad : 0);
   }
   document.querySelectorAll("#tlist button").forEach(b => b.addEventListener("click", () => show(+b.dataset.i)));

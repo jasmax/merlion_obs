@@ -6,10 +6,10 @@
 
 Env:
     PORT                      set by Railway
-    OPS_DASH_USER/PASS        required for / and /otlp.json
+    OPS_DASH_USER/PASS        required for /
     DEV_DASH_USER/PASS        required for /dev (defaults to ops creds if unset)
     ENABLE_DEV_DASHBOARD      true/false (default true)
-    RAILWAY_VOLUME_MOUNT_PATH set by Railway when a volume is attached; mount it at /app/out
+    MERLION_SOURCE            fixture (default) or mysql, with MYSQL_URL / DB_* (see SETUP.md)
 """
 import base64
 import http.server

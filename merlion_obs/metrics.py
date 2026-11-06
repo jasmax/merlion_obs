@@ -39,7 +39,7 @@ def _agg(ts):
         "cost_usd": round(sum(t["cost_usd"] for t in ts), 4),
         "cost_per_complaint": round(st.mean(t["cost_usd"] for t in ts), 4) if ts else 0,
         "tool_error_rate": sum(not t["checks"].get("tool_errors", (True,))[0] for t in ts) / len(ts) if ts else 0,
-        "escalation_rate": sum(t["resolution"] == "escalate" for t in ts) / len(ts) if ts else 0,
+        "escalation_rate": sum(t["resolution"] in ("escalate", "clarify") for t in ts) / len(ts) if ts else 0,
         "override_rate": sum(t["feedback"]["outcome"] == "overridden" for t in fb) / len(fb) if fb else 0,
         "critical_fail_rate": len(crit) / len(ts) if ts else 0,
         "check_fail": {c: sum(1 for t in ts if c in t["checks"] and not t["checks"][c][0])
@@ -70,17 +70,18 @@ def by_version(traces):
 
 
 def weekly_drivers(traces, version=None):
-    """Priya's view: complaints per driver / zone per week, as attributed by the agent.
+    """Priya's view: complaints per driver / zone per week, as attributed by the agent from the order it
+    resolved (the Spring weekly report reads the same links from complaint_emails.resolved_*).
     'Substantiated' excludes complaints the CS team finally rejected."""
     rows = defaultdict(lambda: {"complaints": 0, "substantiated": 0})
     for t in traces:
         if version and t["agent_version"] != version:
             continue
-        if not t["driver_id"] or t["order_system"] != "v2":
+        if not t["driver_id"]:
             continue
         wk = (t["day"] - dt.timedelta(days=t["day"].weekday())).isoformat()
         final = t["feedback"]["final"] if t["feedback"] else t["resolution"]
-        for key in (("driver", t["driver_id"]), ("zone", t["zone"] or "UNKNOWN")):
+        for key in (("driver", t["driver_id"]), ("zone", t["zone"] or "Unknown")):
             r = rows[(wk, *key)]
             r["complaints"] += 1
             r["substantiated"] += final not in ("reject",)

@@ -1,0 +1,1 @@
+Reply with JSON only: {"category": "not_received|late|damaged|overcharged", "outcome": "redeliver|refund|compensate|reject|escalate", "amount": number or null, "reason": string, "citations": [source strings], "conflicts": [string]}

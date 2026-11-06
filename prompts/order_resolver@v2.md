@@ -1,1 +1,0 @@
-Find the order with this number. Order numbers repeat across the v1 (pre-Feb-2026) and v2 systems: call both. If both match, choose by (1) sender email == customer email, (2) the date in the email. If still tied, return AMBIGUOUS.

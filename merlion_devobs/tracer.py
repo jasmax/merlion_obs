@@ -1,7 +1,7 @@
 """Dev-loop tracer: every span belongs to a run (one commit/config evaluated on a
 dataset) and a case (one dataset email). Adds what developers need on top of the
-production tracer: agent name, prompt ref, model, handoffs, and an output digest
-on every span so two runs can be compared span by span.
+production tracer: pipeline step, prompt/step ref, model, handoffs between steps, and an
+output digest on every span so two runs can be compared span by span.
 """
 import hashlib
 import json
@@ -9,13 +9,9 @@ import sqlite3
 import uuid
 from contextlib import contextmanager
 
+from merlion_obs import llm
 from merlion_obs.clock import CLOCK
-from merlion_obs.tracer import redact
-
-MODELS = {  # USD per 1M tokens (in, out): Claude Sonnet 5.5 and Haiku 5.5 list prices, Nov 2026.
-    "sonnet": (2.00, 10.00),
-    "haiku": (0.10, 0.50),
-}
+from merlion_obs.pii import redact
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS runs(run_id TEXT PRIMARY KEY, ts TEXT, git_sha TEXT, branch TEXT,
@@ -52,10 +48,9 @@ class Span:
         return value
 
     def llm(self, model, prompt_ref, tin, tout):
-        pin, pout = MODELS[model]
-        cost = tin / 1e6 * pin + tout / 1e6 * pout
-        self.set(**{"llm.model": model, "prompt.ref": prompt_ref, "llm.tokens_in": tin,
-                    "llm.tokens_out": tout, "llm.cost_usd": round(cost, 6)})
+        cost, basis = llm.cost(model, tin, tout)
+        self.set(**{"llm.model": llm.model_id(model), "prompt.ref": prompt_ref, "llm.tokens_in": tin,
+                    "llm.tokens_out": tout, "llm.cost_usd": round(cost, 6), "llm.cost_basis": basis})
         self.ctx["cost"] += cost
         self.ctx["tokens"] += tin + tout
 

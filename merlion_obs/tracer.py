@@ -1,23 +1,22 @@
 """Minimal OpenTelemetry-shaped tracer for the triage agent.
 
-Every complaint run is one trace; every LLM call / tool call is a span. Spans are
-written to SQLite (local, zero-infra) and can be exported as OTLP JSON for
-Phoenix, Langfuse, Jaeger or any OTel collector (see otlp.py).
+Every complaint run is one trace; every pipeline step, LLM call and tool call is a span.
+Spans are written to SQLite (local, zero-infra) and exported as OTLP to Langfuse Cloud, the
+team's AI tracing tool (see otlp.py), so the same trace can be opened there next to the
+Spring Boot request's Railway logs (same request id).
 
-PII (emails, SG phone numbers, NRIC/FIN) is redacted *before* anything is
-persisted, so the trace store never holds raw customer identifiers.
+PII (emails, SG phone numbers, NRIC/FIN, addresses, postal codes) is masked *before* anything
+is persisted, so the trace store never holds raw customer identifiers.
 """
 import contextvars
 import json
-import re
 import sqlite3
 import uuid
 from contextlib import contextmanager
 
+from . import llm
 from .clock import CLOCK
-
-# Claude Sonnet 5.5 list pricing (USD per 1M tokens), platform.claude.com, Nov 2026.
-PRICE_IN, PRICE_OUT = 2.00, 10.00
+from .pii import PATTERNS as _PII, redact
 
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS spans(
@@ -38,40 +37,11 @@ CREATE TABLE IF NOT EXISTS feedback(
   outcome TEXT);
 """
 
-_PII = [
-    (re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+"), "[EMAIL]"),
-    (re.compile(r"(?<!\d)(?:\+65[\s-]?)?[689]\d{3}[\s-]?\d{4}(?!\d)"), "[PHONE]"),
-    (re.compile(r"\b[STFGM]\d{7}[A-Z]\b"), "[NRIC]"),
-]
-
-
-def redact(value):
-    """Return (redacted_value, n_redactions). Walks dicts/lists."""
-    if isinstance(value, str):
-        n = 0
-        for pat, repl in _PII:
-            value, k = pat.subn(repl, value)
-            n += k
-        return value, n
-    if isinstance(value, dict):
-        out, n = {}, 0
-        for k, v in value.items():
-            out[k], m = redact(v)
-            n += m
-        return out, n
-    if isinstance(value, (list, tuple)):
-        out, n = [], 0
-        for v in value:
-            r, m = redact(v)
-            out.append(r)
-            n += m
-        return out, n
-    return value, 0
 
 
 class Span:
-    def __init__(self, tracer, trace, name, kind, parent):
-        self.tracer, self.trace, self.name, self.kind = tracer, trace, name, kind
+    def __init__(self, tracer, trace, name, kind, parent, agent=None):
+        self.tracer, self.trace, self.name, self.kind, self.agent = tracer, trace, name, kind, agent
         self.span_id = uuid.uuid4().hex[:16]
         self.parent_id = parent.span_id if parent else None
         self.attrs = {}
@@ -82,10 +52,14 @@ class Span:
         self.attrs.update(attrs)
         return self
 
-    def llm_usage(self, model, tokens_in, tokens_out):
-        cost = tokens_in / 1e6 * PRICE_IN + tokens_out / 1e6 * PRICE_OUT
-        self.set(**{"llm.model": model, "llm.tokens_in": tokens_in,
-                    "llm.tokens_out": tokens_out, "llm.cost_usd": round(cost, 6)})
+    def out(self, value):
+        self.attrs["output"] = value
+        return value
+
+    def llm(self, model, prompt_ref, tokens_in, tokens_out):
+        cost, basis = llm.cost(model, tokens_in, tokens_out)
+        self.set(**{"llm.model": llm.model_id(model), "prompt.ref": prompt_ref, "llm.tokens_in": tokens_in,
+                    "llm.tokens_out": tokens_out, "llm.cost_usd": round(cost, 6), "llm.cost_basis": basis})
         self.trace.tokens_in += tokens_in
         self.trace.tokens_out += tokens_out
         self.trace.cost += cost
@@ -115,9 +89,7 @@ class Tracer:
         t = Trace(env, version, email_id)
         tok = self._trace.set(t)
         try:
-            with self.span("triage_complaint", "agent") as root:
-                root.set(**{"agent.version": version, "email.id": email_id, "env": env})
-                yield t
+            yield t
         except Exception:
             t.status = "error"
         finally:
@@ -125,9 +97,9 @@ class Tracer:
             self._write_trace(t)
 
     @contextmanager
-    def span(self, name, kind="tool"):
+    def span(self, name, kind="tool", agent=None):
         t = self._trace.get()
-        s = Span(self, t, name, kind, self._span.get())
+        s = Span(self, t, name, kind, self._span.get(), agent)
         tok = self._span.set(s)
         try:
             yield s

@@ -1,0 +1,17 @@
+{
+  "prompts": {
+    "intake": "v1",
+    "resolveOrder": "v2",
+    "tools": "v3",
+    "chat": "v2",
+    "answer_check": "v1"
+  },
+  "models": {
+    "intake": "-",
+    "resolveOrder": "-",
+    "tools": "-",
+    "chat": "nano",
+    "answer_check": "-"
+  },
+  "max_tool_calls": 8
+}

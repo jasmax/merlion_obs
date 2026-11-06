@@ -1,0 +1,1 @@
+Code. Extract one 5-digit order number (20001-34353; a MERL-C-xxxx corporate reference is not one), the phone number, the signature name, any date mentioned and any amount charged. Mask emails, phones, NRIC, addresses and names before any text reaches the LLM. Refuse corporate-account requests without an LLM call.
