@@ -67,14 +67,7 @@ After CircleCI's first run on a PR (step 3), protect `main`: **Settings → Bran
    `railway.json` sets the start command, health check and restart policy. Railpack detects Python from `requirements.txt` and `.python-version`.
 4. **Project Settings → Tokens → create a project token** for the production environment. Paste it into the CircleCI `merlion` context as `RAILWAY_TOKEN`.
 5. Push to `main`. CircleCI runs the gate and then `railway up --ci --service merlion-obs`.
-6. Build dashboards once before serving:
-
-   ```bash
-   python run_demo.py
-   python build_dashboard.py
-   python simulate_dev.py
-   python build_dev_dashboard.py
-   ```
+6. Dashboards build automatically. `out/` and `out_dev/` are gitignored, so a deploy ships without them. `server.py` starts serving right away (so `/health` passes) and runs `run_demo.py`, `build_dashboard.py`, `simulate_dev.py` and `build_dev_dashboard.py` in the background. `/` is ready after about 40s and `/dev` after about 75s. Until then they return *"still being built"*. If a step fails, the page shows the error, and the Railway deploy logs show it too (`build failed: …`).
 
 7. When real traces start arriving, attach a **volume** mounted at `/app/out` so the SQLite trace store survives redeploys (Railway sets `RAILWAY_VOLUME_MOUNT_PATH` for you).
 

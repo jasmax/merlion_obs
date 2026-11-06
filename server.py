@@ -14,8 +14,14 @@ Env:
 import base64
 import http.server
 import os
+import subprocess
+import sys
+import threading
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
+# out/ and out_dev/ are gitignored, so a fresh deploy has no dashboards: build them on startup.
+BUILD_STEPS = [["run_demo.py"], ["build_dashboard.py"], ["simulate_dev.py"], ["build_dev_dashboard.py"]]
+BUILD = {"state": "idle", "error": ""}
 ROUTES = {"/": "out/dashboard.html", "/dev": "out_dev/dev_dashboard.html"}
 OPS_USER, OPS_PASS = os.environ.get("OPS_DASH_USER"), os.environ.get("OPS_DASH_PASS")
 DEV_USER = os.environ.get("DEV_DASH_USER") or OPS_USER
@@ -64,6 +70,8 @@ class H(http.server.BaseHTTPRequestHandler):
             return self._send(404, b"not found", "text/plain")
         full = os.path.join(ROOT, f)
         if not os.path.exists(full):
+            if BUILD["state"] == "failed":
+                return self._send(500, ("Dashboard build failed:\n\n" + BUILD["error"]).encode(), "text/plain; charset=utf-8")
             return self._send(503, b"Dashboards are still being built. Refresh in a minute.", "text/plain")
         with open(full, "rb") as fh:
             self._send(200, fh.read(), "application/json" if f.endswith(".json") else "text/html; charset=utf-8")
@@ -83,8 +91,28 @@ class H(http.server.BaseHTTPRequestHandler):
         pass
 
 
-if __name__ == "__main__":
+def build_dashboards():
+    if all(os.path.exists(os.path.join(ROOT, f)) for f in ROUTES.values()):
+        BUILD["state"] = "done"
+        return
+    BUILD["state"] = "building"
     os.makedirs(os.path.join(ROOT, "out"), exist_ok=True)
+    os.makedirs(os.path.join(ROOT, "out_dev"), exist_ok=True)
+    for step in BUILD_STEPS:
+        print(f"build: {step[0]}", flush=True)
+        r = subprocess.run([sys.executable, *step], cwd=ROOT, capture_output=True, text=True, encoding="utf-8",
+                           errors="replace", env={**os.environ, "PYTHONIOENCODING": "utf-8"})
+        if r.returncode != 0:
+            BUILD["state"] = "failed"
+            BUILD["error"] = f"{step[0]} exited {r.returncode}\n{r.stderr[-4000:]}"
+            print("build failed:\n" + BUILD["error"], flush=True)
+            return
+    BUILD["state"] = "done"
+    print("build: dashboards ready", flush=True)
+
+
+if __name__ == "__main__":
+    threading.Thread(target=build_dashboards, daemon=True).start()
     port = int(os.environ.get("PORT", "8080"))
     print(f"serving on :{port}", flush=True)
     http.server.ThreadingHTTPServer(("0.0.0.0", port), H).serve_forever()
