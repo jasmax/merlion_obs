@@ -81,4 +81,4 @@ After CircleCI's first run on a PR (step 3), protect `main`: **Settings → Bran
 ## Check it works
 
 - Open a PR that changes `configs/main.json` to `configs/policy-haiku.json`'s contents. CircleCI should go red with `newly_broken 11` and GitHub should block the merge.
-- Merge a passing change. Railway should start successfully and require login for `/` and `/dev` (if enabled).
+- Merge a passing change. Railway should start successfully and require login for `/` and `/dev` (if enabled)
