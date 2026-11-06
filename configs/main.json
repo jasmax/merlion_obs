@@ -1,0 +1,17 @@
+{
+  "prompts": {
+    "router": "v2",
+    "order_resolver": "v2",
+    "evidence": "v3",
+    "policy": "v1",
+    "writer": "v1"
+  },
+  "models": {
+    "router": "sonnet",
+    "order_resolver": "sonnet",
+    "evidence": "sonnet",
+    "policy": "sonnet",
+    "writer": "sonnet"
+  },
+  "max_hops": 8
+}

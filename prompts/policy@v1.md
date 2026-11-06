@@ -1,0 +1,1 @@
+Apply the Merlion resolution policy to the evidence. Output one of redeliver, refund, compensate, reject, escalate, with an amount in SGD where relevant. Damage compensation is capped at the rate card's damage_cap.

@@ -1,0 +1,368 @@
+<title>Merlion Agent Dev Console</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: developer console. Run ledger on top (pick a commit), then the diff against its baseline, then per-agent drill-down. Agent identity = fixed categorical colour used in every view. */
+:root {
+  --bg: #f5f5f8; --surface: #ffffff; --sunk: #ececf2; --ink: #17161f; --ink-2: #4c4a5c; --muted: #7a7889; --line: #dddce6;
+  --accent: #5a48c9; --accent-soft: rgba(90,72,201,.10);
+  --a-router: #2a78d6; --a-order_resolver: #eb6834; --a-evidence: #1baf7a; --a-policy: #eda100; --a-writer: #e87ba4; --a-network: #7a7889;
+  --good: #0ca30c; --warn: #fab219; --crit: #d03b3b; --good-ink: #0a7a0a; --crit-ink: #b42f2f; --diff-bg: rgba(208,59,59,.08);
+  --f-ui: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121118; --surface: #1a1922; --sunk: #23222d; --ink: #eeedf4; --ink-2: #bdbbcb; --muted: #8e8c9e; --line: #2d2c39;
+  --accent: #9d91f0; --accent-soft: rgba(157,145,240,.14);
+  --a-router: #3987e5; --a-order_resolver: #d95926; --a-evidence: #199e70; --a-policy: #c98500; --a-writer: #d55181; --a-network: #8e8c9e;
+  --good-ink: #3fc23f; --crit-ink: #ec7171; --diff-bg: rgba(230,103,103,.12); color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #121118; --surface: #1a1922; --sunk: #23222d; --ink: #eeedf4; --ink-2: #bdbbcb; --muted: #8e8c9e; --line: #2d2c39;
+  --accent: #9d91f0; --accent-soft: rgba(157,145,240,.14);
+  --a-router: #3987e5; --a-order_resolver: #d95926; --a-evidence: #199e70; --a-policy: #c98500; --a-writer: #d55181; --a-network: #8e8c9e;
+  --good-ink: #3fc23f; --crit-ink: #ec7171; --diff-bg: rgba(230,103,103,.12); color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.5 var(--f-ui); }
+.wrap { max-width: 1200px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.top { border-bottom: 1px solid var(--line); background: var(--surface); }
+header.top .wrap { padding-block: 22px 18px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 12px 28px; }
+h1, h2, h3 { margin: 0; font-weight: 600; text-wrap: balance; letter-spacing: -.01em; }
+h1 { font-size: 26px; line-height: 1.15; } h2 { font-size: 19px; } h3 { font-size: 14.5px; }
+.eyebrow { font: 500 11px/1 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.sub { color: var(--ink-2); max-width: 70ch; margin: 6px 0 0; }
+.synthetic { font: 11.5px/1.35 var(--f-mono); color: var(--ink-2); border: 1px dashed var(--muted); border-radius: 4px; padding: 6px 9px; max-width: 380px; }
+main .wrap { display: grid; gap: 40px; padding-block: 26px 64px; }
+section { display: grid; gap: 14px; min-width: 0; }
+.head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: end; gap: 8px 20px; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; min-width: 0; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 14px; }
+.grid3 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); gap: 14px; }
+.tbl { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { text-align: left; font: 500 10.5px/1.2 var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 8px 9px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 8px 9px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+tr:last-child td { border-bottom: 0; }
+.num { text-align: right; font-family: var(--f-mono); font-size: 12.5px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.mono { font-family: var(--f-mono); font-size: 12.5px; }
+.why { color: var(--ink-2); font-size: 12.5px; }
+code { font-family: var(--f-mono); font-size: 12.5px; background: var(--sunk); padding: 1px 5px; border-radius: 3px; }
+.better { color: var(--good-ink); } .worse { color: var(--crit-ink); }
+.chip { display: inline-flex; align-items: center; gap: 5px; font: 500 11.5px/1 var(--f-mono); padding: 4px 7px; border-radius: 4px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); white-space: nowrap; }
+.chip i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.chip.pass i { background: var(--good); } .chip.block i { background: var(--crit); }
+.br { font: 500 11.5px/1 var(--f-mono); padding: 3px 6px; border-radius: 3px; background: var(--sunk); color: var(--ink-2); white-space: nowrap; }
+.br.main { background: var(--accent-soft); color: var(--accent); }
+.ag { display: inline-flex; align-items: center; gap: 6px; font: 500 12px/1 var(--f-mono); white-space: nowrap; }
+.ag::before { content: ""; width: 9px; height: 9px; border-radius: 2px; background: var(--c, var(--muted)); }
+
+/* run ledger */
+#runTbl tbody tr { cursor: pointer; }
+#runTbl tbody tr:hover td { background: var(--sunk); }
+#runTbl tbody tr[aria-selected="true"] td { background: var(--accent-soft); }
+#runTbl tbody tr[aria-selected="true"] td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+#runTbl tbody tr:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.minis { display: flex; gap: 3px; }
+.minis span { width: 30px; height: 18px; border-radius: 3px; font: 500 10px/18px var(--f-mono); text-align: center; color: #fff; }
+
+/* charts */
+svg text { font-family: var(--f-mono); font-size: 10.5px; fill: var(--muted); }
+svg .grid { stroke: var(--line); stroke-dasharray: 2 3; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 14px; height: 2px; display: inline-block; }
+#tip { position: fixed; z-index: 20; pointer-events: none; background: var(--ink); color: var(--bg); font: 12px/1.45 var(--f-mono); padding: 7px 9px; border-radius: 5px; max-width: 320px; box-shadow: 0 4px 16px rgba(0,0,0,.2); }
+
+/* diff */
+.pickers { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+select { font: 500 13px var(--f-mono); padding: 6px 8px; border-radius: 5px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); max-width: 100%; }
+select:focus-visible { outline: 2px solid var(--accent); }
+.changes { display: flex; flex-wrap: wrap; gap: 8px; }
+.change { font: 12px/1.3 var(--f-mono); background: var(--sunk); border-radius: 5px; padding: 6px 9px; }
+.change b { font-weight: 500; }
+.counts { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+@media (max-width: 560px) { .counts { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.counts div { background: var(--surface); padding: 12px 14px; }
+.counts b { display: block; font: 600 24px/1.1 var(--f-ui); font-variant-numeric: tabular-nums; }
+.counts span { font-size: 12.5px; color: var(--ink-2); }
+.clist { display: grid; gap: 4px; max-height: 360px; overflow-y: auto; }
+.clist button { display: grid; grid-template-columns: 62px 64px minmax(0, 1fr); gap: 4px 10px; align-items: center; text-align: left; border: 1px solid transparent; background: none; color: var(--ink); border-radius: 5px; padding: 6px 8px; cursor: pointer; font: inherit; font-size: 12.5px; }
+.clist button:hover { background: var(--sunk); }
+.clist button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.clist button:focus-visible { outline: 2px solid var(--accent); }
+.clist .st { font: 500 11px var(--f-mono); text-transform: uppercase; }
+.clist .sig { grid-column: 3; color: var(--ink-2); min-width: 0; overflow-wrap: anywhere; }
+.side { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 14px; }
+.wf { display: grid; gap: 1px; font: 12px var(--f-mono); }
+.wf .r { display: grid; grid-template-columns: minmax(120px, 190px) 1fr 54px; gap: 8px; align-items: center; padding: 3px 5px; border-radius: 3px; cursor: default; }
+.wf .r.div { background: var(--diff-bg); }
+.wf .r:hover { background: var(--sunk); }
+.wf .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.wf .tr { position: relative; height: 10px; }
+.wf .bar { position: absolute; top: 0; height: 10px; border-radius: 2px; min-width: 2px; background: var(--c); }
+.wf .bar.tool { opacity: .55; } .wf .bar.handoff { height: 4px; top: 3px; opacity: .8; } .wf .bar.agentk { opacity: .22; }
+.wf .ms { text-align: right; color: var(--muted); }
+.verdict { display: grid; gap: 4px; font-size: 12.5px; margin-bottom: 10px; }
+.bar-h { height: 9px; border-radius: 0 3px 3px 0; }
+details { border-top: 1px solid var(--line); padding: 8px 0; }
+details:first-of-type { border-top: 0; }
+summary { cursor: pointer; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+summary:focus-visible { outline: 2px solid var(--accent); }
+details p { margin: 8px 0 0; font: 12.5px/1.55 var(--f-mono); color: var(--ink-2); white-space: pre-wrap; max-width: 90ch; }
+pre.cli { margin: 0; background: var(--sunk); border-radius: 6px; padding: 12px 14px; font: 12.5px/1.6 var(--f-mono); overflow-x: auto; }
+</style>
+
+<header class="top"><div class="wrap">
+  <div>
+    <div class="eyebrow">Merlion · triage agent network · dev loop</div>
+    <h1>Agent network dev console</h1>
+    <p class="sub" id="hsub"></p>
+  </div>
+  <div class="synthetic">Simulated commits and model outputs over synthetic data that reproduces the client brief. Tool lookups and scoring are real.</div>
+</div></header>
+<div id="tip" hidden></div>
+
+<main><div class="wrap">
+  <section>
+    <div class="head"><div><div class="eyebrow">Every commit runs the full dataset · gated against latest main</div><h2>Runs</h2>
+      <p class="sub">Select a run to diff it against its baseline. Coloured squares are per-agent scores: router, order resolver, evidence, policy.</p></div></div>
+    <div class="panel tbl"><table id="runTbl"></table></div>
+  </section>
+
+  <section>
+    <div class="head"><div><div class="eyebrow">Across commits</div><h2>Where the accuracy came from</h2></div>
+      <div class="legend" id="trendLegend"></div></div>
+    <div class="grid3">
+      <div class="panel"><h3>Accuracy, end to end and per agent</h3><p class="why" style="margin:2px 0 6px">Solid points are main; hollow points are feature branches.</p><div id="tAcc"></div></div>
+      <div class="panel"><h3>Cost per case</h3><p class="why" style="margin:2px 0 6px">US$ across all model calls. Gate at $0.025.</p><div id="tCost"></div></div>
+      <div class="panel"><h3>p95 latency</h3><p class="why" style="margin:2px 0 6px">Seconds per case end to end. Gate at 12 s.</p><div id="tLat"></div></div>
+    </div>
+  </section>
+
+  <section id="diff">
+    <div class="head"><div><div class="eyebrow">Case-by-case regression diff</div><h2 id="diffTitle">Diff</h2></div>
+      <div class="pickers"><label class="why" for="selA">Baseline</label><select id="selA"></select><label class="why" for="selB">Candidate</label><select id="selB"></select></div></div>
+    <div class="changes" id="changes"></div>
+    <div class="counts" id="counts"></div>
+    <div class="grid2">
+      <div class="panel tbl"><table id="deltaTbl"></table></div>
+      <div class="panel"><h3 style="margin-bottom:8px">Changed cases</h3><div class="clist" id="clist"></div></div>
+    </div>
+    <div class="panel" id="caseView"></div>
+  </section>
+
+  <section>
+    <div class="head"><div><div class="eyebrow" id="compEyebrow">Candidate run</div><h2>Agents and failure clusters</h2>
+      <p class="sub">Each agent is scored on its own job. A failed case is blamed on the first agent that got its part wrong, then grouped by signature.</p></div></div>
+    <div class="grid2">
+      <div class="panel tbl"><table id="compTbl"></table></div>
+      <div class="panel tbl"><table id="clusterTbl"></table></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="head"><div><div class="eyebrow">Versioned and content-hashed</div><h2>Prompt registry</h2>
+      <p class="sub">Every model span records <code>agent@version#hash</code>. Editing a prompt without bumping its version still changes the hash, so the diff catches it.</p></div></div>
+    <div class="panel" id="registry"></div>
+  </section>
+
+  <section>
+    <div class="head"><div><div class="eyebrow">Dataset and daily loop</div><h2>Using it</h2></div></div>
+    <div class="grid2">
+      <div class="panel" id="dsPanel"></div>
+      <div class="panel"><pre class="cli"># before you push: run the dataset, diff against main, gate
+python -m merlion_devobs.cli run --config configs/main.json -m "router: few-shot" --baseline main
+
+# what changed, case by case, and where it diverged
+python -m merlion_devobs.cli diff r05 r06
+python -m merlion_devobs.cli show r06 E0067
+python -m merlion_devobs.cli clusters r06
+
+# grow the dataset from production: CS overrides need a label
+python -m merlion_devobs.cli promote ../out/traces.db</pre></div>
+    </div>
+  </section>
+</div></main>
+
+<script>
+const D = /*DATA*/null;
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const pct = (x, d = 1) => (x * 100).toFixed(d) + "%";
+const AG = ["router", "order_resolver", "evidence", "policy", "writer"];
+const AGN = {router: "router", order_resolver: "order resolver", evidence: "evidence", policy: "policy", writer: "writer", network: "network", dataset: "dataset"};
+const agc = a => `var(--a-${AG.includes(a) || a === "network" ? a : "network"})`;
+const agTag = a => `<span class="ag" style="--c:${agc(a)}">${AGN[a] || a}</span>`;
+const R = Object.fromEntries(D.runs.map(r => [r.id, r]));
+const tip = $("#tip");
+function showTip(e, h) { tip.innerHTML = h; tip.hidden = false; const w = tip.offsetWidth, hh = tip.offsetHeight; let x = e.clientX + 14, y = e.clientY + 14; if (x + w > innerWidth - 8) x = e.clientX - w - 14; if (y + hh > innerHeight - 8) y = e.clientY - hh - 14; tip.style.left = x + "px"; tip.style.top = y + "px"; }
+const hideTip = () => tip.hidden = true;
+const fmtDate = ts => new Date(ts).toLocaleString("en-SG", {day: "numeric", month: "short"});
+const baselineOf = id => { const i = D.runs.findIndex(r => r.id === id); for (let j = i - 1; j >= 0; j--) if (D.runs[j].branch === "main") return D.runs[j].id; return null; };
+const passed = g => Object.values(g).every(Boolean);
+
+$("#hsub").textContent = `${D.runs.length} runs from ${fmtDate(D.runs[0].ts)} to ${fmtDate(D.runs.at(-1).ts)} · ${D.dataset.n} cases per run · 5 agents · every span tagged with its prompt hash and model`;
+
+let cand = D.runs.find(r => r.id === "r06") ? "r06" : D.runs.at(-1).id, base = baselineOf(cand), caseId = null;
+
+// ---------- run ledger ----------
+function renderRuns() {
+  const head = `<thead><tr><th>Run</th><th>Commit</th><th>Change</th><th class="num">Accuracy</th><th>Per agent</th><th class="num">$ / case</th><th class="num">p95</th><th class="num">Loops</th><th class="num">Broke vs main</th><th>Gate</th></tr></thead>`;
+  const rows = D.runs.map(r => {
+    const s = r.summary, comps = ["router", "order_resolver", "evidence", "policy"];
+    const minis = comps.map(a => { const v = s.components[a]; return `<span style="background:${agc(a)};opacity:${(0.35 + 0.65 * Math.max(0, (v - .8) / .2)).toFixed(2)}" title="${AGN[a]} ${pct(v)}">${Math.round(v * 100)}</span>`; }).join("");
+    const fails = Object.entries(r.gate).filter(([, ok]) => !ok).map(([k]) => k.replaceAll("_", " "));
+    return `<tr tabindex="0" data-id="${r.id}" aria-selected="${r.id === cand}"><td class="mono"><b>${r.id}</b><div class="why">${fmtDate(r.ts)}</div></td>
+      <td><div class="mono">${r.sha}</div><span class="br ${r.branch === "main" ? "main" : ""}">${esc(r.branch)}</span></td>
+      <td style="min-width:220px">${esc(r.message)}<div class="why">${esc(r.author)}</div></td>
+      <td class="num"><b>${pct(s.resolution_accuracy)}</b></td><td><div class="minis">${minis}</div></td>
+      <td class="num">${s.cost_per_case_usd.toFixed(4)}</td><td class="num">${s.p95_latency_s.toFixed(1)} s</td>
+      <td class="num ${s.loops ? "worse" : ""}">${s.loops}</td><td class="num ${s.newly_broken > 1 ? "worse" : ""}">${r.id === "r01" ? "–" : s.newly_broken}</td>
+      <td><span class="chip ${passed(r.gate) ? "pass" : "block"}"><i></i>${passed(r.gate) ? "pass" : "blocked"}</span>${fails.length ? `<div class="why" style="margin-top:4px;max-width:200px">${esc(fails.join(", "))}</div>` : ""}</td></tr>`;
+  }).join("");
+  $("#runTbl").innerHTML = head + `<tbody>${rows}</tbody>`;
+  $("#runTbl").querySelectorAll("tbody tr").forEach(tr => {
+    const go = () => { cand = tr.dataset.id; base = baselineOf(cand) || D.runs[0].id; caseId = null; renderAll(); };
+    tr.addEventListener("click", go);
+    tr.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } });
+  });
+}
+
+// ---------- trend charts ----------
+function trend(el, series, {fmt, min, max, thr}) {
+  const W = Math.max(260, el.clientWidth), H = 190, m = {l: 44, r: 12, t: 10, b: 24}, n = D.runs.length;
+  const iw = W - m.l - m.r, ih = H - m.t - m.b, x = i => m.l + (i + .5) * iw / n, y = v => m.t + ih - (v - min) / (max - min) * ih;
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img">`;
+  [min, (min + max) / 2, max].forEach(t => s += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${y(t)}" y2="${y(t)}"/><text x="${m.l - 6}" y="${y(t) + 3.5}" text-anchor="end">${fmt(t)}</text>`);
+  if (thr != null) s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(thr)}" y2="${y(thr)}" stroke="var(--crit)" stroke-dasharray="5 3"/><text x="${W - m.r}" y="${y(thr) - 4}" text-anchor="end" style="fill:var(--crit-ink)">gate</text>`;
+  D.runs.forEach((r, i) => s += `<text x="${x(i)}" y="${H - 7}" text-anchor="middle" ${r.id === cand ? 'style="fill:var(--ink);font-weight:500"' : ""}>${r.id}</text>`);
+  const mainIdx = D.runs.map((r, i) => r.branch === "main" ? i : -1).filter(i => i >= 0);
+  series.forEach(se => {
+    s += `<polyline fill="none" stroke="${se.color}" stroke-width="${se.w || 2}" stroke-linejoin="round" points="${mainIdx.map(i => x(i) + "," + y(se.get(D.runs[i]))).join(" ")}"/>`;
+    D.runs.forEach((r, i) => { const main = r.branch === "main";
+      s += `<circle cx="${x(i)}" cy="${y(se.get(r))}" r="${se.w ? 4 : 3.2}" fill="${main ? se.color : "var(--surface)"}" stroke="${main ? "var(--surface)" : se.color}" stroke-width="${main ? 1.5 : 2}"/>`; });
+  });
+  s += `<rect class="hit" x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="transparent"/></svg>`;
+  el.innerHTML = s;
+  const svg = el.querySelector("svg");
+  svg.querySelector(".hit").addEventListener("mousemove", e => { const b = svg.getBoundingClientRect(), px = (e.clientX - b.left) * W / b.width;
+    const i = Math.max(0, Math.min(n - 1, Math.floor((px - m.l) / (iw / n)))), r = D.runs[i];
+    showTip(e, `<b>${r.id}</b> ${esc(r.branch)} · ${r.sha}<br>${esc(r.message)}<br>` + series.map(se => `${se.name}: ${fmt(se.get(r))}`).join("<br>")); });
+  svg.querySelector(".hit").addEventListener("mouseleave", hideTip);
+  svg.querySelector(".hit").addEventListener("click", e => { const b = svg.getBoundingClientRect(), px = (e.clientX - b.left) * W / b.width;
+    const i = Math.max(0, Math.min(n - 1, Math.floor((px - m.l) / (iw / n)))); cand = D.runs[i].id; base = baselineOf(cand) || D.runs[0].id; caseId = null; renderAll(); });
+}
+function renderTrends() {
+  const acc = [{name: "end to end", color: "var(--ink)", w: 2.5, get: r => r.summary.resolution_accuracy},
+    ...["router", "order_resolver", "evidence", "policy"].map(a => ({name: AGN[a], color: agc(a), get: r => r.summary.components[a]}))];
+  $("#trendLegend").innerHTML = acc.map(se => `<span><i style="background:${se.color};height:${se.w ? 3 : 2}px"></i>${se.name}</span>`).join("");
+  const lo = Math.floor(Math.min(...D.runs.flatMap(r => acc.map(se => se.get(r)))) * 20) / 20;
+  trend($("#tAcc"), acc, {fmt: v => Math.round(v * 100) + "%", min: lo, max: 1, thr: 0.9});
+  trend($("#tCost"), [{name: "$/case", color: "var(--accent)", get: r => r.summary.cost_per_case_usd}], {fmt: v => "$" + v.toFixed(3), min: 0, max: 0.03, thr: 0.025});
+  trend($("#tLat"), [{name: "p95", color: "var(--accent)", get: r => r.summary.p95_latency_s}], {fmt: v => v.toFixed(0) + "s", min: 0, max: 14, thr: 12});
+}
+
+// ---------- diff ----------
+function agentSeq(rid, cid) { return (D.spans[rid][cid] || []).filter(s => s[1] === "agent" && s[0] === s[2]).map(s => [s[2], s[7]]); }
+function divergence(a, b, cid) {
+  const sa = agentSeq(a, cid), sb = agentSeq(b, cid);
+  for (let i = 0; i < Math.max(sa.length, sb.length); i++) {
+    const x = sa[i] || [null, null], y = sb[i] || [null, null];
+    if (x[0] !== y[0]) return {agent: y[0] || x[0], flow: true, note: `control flow: ${x[0] || "end"} → ${y[0] || "end"}`};
+    if (x[1] !== y[1]) return {agent: x[0], flow: false};
+  }
+  return null;
+}
+function renderDiff() {
+  const A = R[base], B = R[cand], ca = D.cases[base], cb = D.cases[cand];
+  $("#selA").innerHTML = D.runs.map(r => `<option value="${r.id}" ${r.id === base ? "selected" : ""}>${r.id} · ${esc(r.branch)}</option>`).join("");
+  $("#selB").innerHTML = D.runs.map(r => `<option value="${r.id}" ${r.id === cand ? "selected" : ""}>${r.id} · ${esc(r.branch)}</option>`).join("");
+  $("#diffTitle").textContent = `${base} → ${cand}: ${B.message}`;
+  const ch = [];
+  AG.forEach(a => { if (A.prompts[a] !== B.prompts[a]) ch.push(`${agTag(a)} prompt <b>${A.prompts[a].split("@")[1]}</b> → <b>${B.prompts[a].split("@")[1]}</b>`);
+    if (A.config.models[a] !== B.config.models[a]) ch.push(`${agTag(a)} model <b>${A.config.models[a]}</b> → <b>${B.config.models[a]}</b>`); });
+  $("#changes").innerHTML = (ch.length ? ch : ["No prompt or model changes"]).map(c => `<div class="change">${c}</div>`).join("");
+  const groups = {broken: [], fixed: [], moved: [], still_failing: [], still_passing: []};
+  Object.keys(cb).sort().forEach(cid => { const pa = ca[cid][4], pb = cb[cid][4];
+    const st = pa && pb ? "still_passing" : !pa && !pb ? (ca[cid][7] !== cb[cid][7] ? "moved" : "still_failing") : pb ? "fixed" : "broken";
+    groups[st].push(cid); });
+  const cnt = [["broken", "newly failing", "worse"], ["fixed", "newly passing", "better"], ["still_failing", "still failing", ""], ["still_passing", "still passing", ""]];
+  $("#counts").innerHTML = cnt.map(([k, l, c]) => `<div><b class="${groups[k].length && c ? c : ""}">${groups[k].length + (k === "still_failing" ? groups.moved.length : 0)}</b><span>${l}</span></div>`).join("");
+  const M = [["resolution_accuracy", "Resolution accuracy", v => pct(v), 1], ["order_accuracy", "Order accuracy", v => pct(v), 1], ["amount_accuracy", "Amount accuracy", v => pct(v), 1],
+    ["escalation_rate", "Escalated", v => pct(v), -1], ["loops", "Handoff loops", v => v, -1], ["mean_hops", "Handoffs per case", v => v.toFixed(2), -1],
+    ["p95_latency_s", "p95 latency", v => v.toFixed(2) + " s", -1], ["cost_per_case_usd", "Cost per case", v => "$" + v.toFixed(4), -1], ["tokens_per_case", "Tokens per case", v => v.toLocaleString(), -1]];
+  $("#deltaTbl").innerHTML = `<thead><tr><th>Metric</th><th class="num">${base}</th><th class="num">${cand}</th><th class="num">Change</th></tr></thead><tbody>` +
+    M.map(([k, l, f, dir]) => { const a = A.summary[k], b = B.summary[k], d = b - a, cls = Math.abs(d) < 1e-9 ? "" : (d * dir > 0 ? "better" : "worse");
+      const dt = Math.abs(d) < 1e-9 ? "–" : (d > 0 ? "+" : "−") + (typeof a === "number" && a <= 1 && k.match(/accuracy|rate/) ? (Math.abs(d) * 100).toFixed(1) + " pt" : f(Math.abs(d)));
+      return `<tr><td>${l}</td><td class="num">${f(a)}</td><td class="num">${f(b)}</td><td class="num ${cls}">${dt}</td></tr>`; }).join("") + "</tbody>";
+  const list = [...groups.broken.map(c => ["broken", c]), ...groups.fixed.map(c => ["fixed", c]), ...groups.moved.map(c => ["changed", c])];
+  if (!caseId || !list.find(([, c]) => c === caseId)) caseId = list[0]?.[1] || Object.keys(cb).find(c => !cb[c][4]) || Object.keys(cb)[0];
+  $("#clist").innerHTML = list.length ? list.map(([st, cid]) => { const dv = divergence(base, cand, cid), r = st === "fixed" ? ca[cid] : cb[cid];
+    return `<button data-c="${cid}" aria-pressed="${cid === caseId}"><span class="st ${st === "broken" ? "worse" : st === "fixed" ? "better" : ""}">${st}</span><span class="mono">${cid}</span>
+      <span>${dv ? agTag(dv.agent) : ""} <span class="why">${esc(r[0].replace("_", " "))}</span></span><span></span><span></span><span class="sig">${esc(r[7] || "")}${dv?.flow ? ` · ${esc(dv.note)}` : ""}</span></button>`; }).join("")
+    : `<p class="why">No case changed outcome. Same answers, so compare cost and latency on the left.</p>`;
+  $("#clist").querySelectorAll("button").forEach(b => b.addEventListener("click", () => { caseId = b.dataset.c; renderDiff(); }));
+  renderCase();
+}
+function waterfall(rid, cid, div) {
+  const sp = D.spans[rid][cid] || [], tot = Math.max(...sp.map(s => s[3] + s[4]), 1);
+  const depth = s => s[1] === "agent" && s[0] === "triage_network" ? 0 : s[1] === "agent" || s[1] === "handoff" ? 1 : 2;
+  return `<div class="wf">${sp.map((s, j) => { const [name, kind, agent, st, dur, status, out, , extra] = s;
+    const cls = kind === "agent" ? "agentk" : kind === "handoff" ? "handoff" : kind === "tool" ? "tool" : "";
+    const isDiv = div && agent === div.agent && kind !== "handoff" && (!div.flow || rid === cand);
+    const info = esc(`${name}\n${kind} · ${dur} ms${status === "error" ? " · ERROR" : ""}\n` + Object.entries(extra).map(([k, v]) => `${k}: ${v}`).join("\n") + (out ? `\nout: ${out}` : "")).replaceAll("\n", "<br>");
+    return `<div class="r ${isDiv ? "div" : ""}" data-t="${info}"><span class="nm" style="padding-left:${depth(s) * 10}px">${esc(name)}</span><span class="tr"><span class="bar ${cls}" style="--c:${agc(agent)};left:${st / tot * 100}%;width:${dur / tot * 100}%"></span></span><span class="ms">${dur >= 1000 ? (dur / 1000).toFixed(1) + "s" : dur + "ms"}</span></div>`; }).join("")}</div>`;
+}
+function renderCase() {
+  const cid = caseId, a = D.cases[base][cid], b = D.cases[cand][cid], dv = divergence(base, cand, cid);
+  const side = (rid, r) => `<div><div class="verdict"><div class="head"><b class="mono">${rid} · ${R[rid].sha}</b><span class="chip ${r[4] ? "pass" : "block"}"><i></i>${r[4] ? "correct" : "wrong"}</span></div>
+      <div>Agent said <b class="mono">${r[3].action}${r[3].amount ? " S$" + (+r[3].amount).toFixed(2) : ""}</b> on <span class="mono">${r[3].order ? r[3].order.system + ":" + r[3].order.no : "no order"}</span> · ${r[10]} handoffs · ${(r[8] / 1000).toFixed(1)} s · $${r[9].toFixed(4)}</div>
+      ${r[7] ? `<div class="worse">${esc(r[7])}</div>` : ""}</div>${waterfall(rid, cid, dv)}</div>`;
+  $("#caseView").innerHTML = `<div class="head" style="margin-bottom:12px"><div><div class="eyebrow">Case ${cid} · ${esc(b[0].replace("_", " "))} · ${b[1] === "golden" ? "golden set" : "promoted from production"}</div>
+      <h3>Expected <span class="mono">${b[2].action}${b[2].amount ? " S$" + (+b[2].amount).toFixed(2) : ""}</span> on <span class="mono">${b[2].order}</span>${dv ? ` · first diverged at ${agTag(dv.agent)}${dv.flow ? ` <span class="why">(${esc(dv.note)})</span>` : ""}` : " · identical agent outputs"}</h3></div>
+      <div class="legend">${AG.map(x => `<span><i style="background:${agc(x)};height:8px;width:8px;border-radius:2px"></i>${AGN[x]}</span>`).join("")}</div></div>
+    <div class="side">${side(base, a)}${side(cand, b)}</div>`;
+  $("#caseView").querySelectorAll(".r").forEach(r => { r.addEventListener("mousemove", e => showTip(e, r.dataset.t)); r.addEventListener("mouseleave", hideTip); });
+}
+$("#selA").addEventListener("change", e => { base = e.target.value; renderDiff(); });
+$("#selB").addEventListener("change", e => { cand = e.target.value; renderAll(); });
+
+// ---------- components & clusters ----------
+function renderComponents() {
+  const r = R[cand], s = r.summary;
+  $("#compEyebrow").textContent = `Run ${cand} · ${r.branch} · ${r.sha}`;
+  const totCost = Object.values(s.agent_cost_usd).reduce((a, b) => a + b, 0);
+  $("#compTbl").innerHTML = `<thead><tr><th>Agent</th><th>Prompt · model</th><th class="num">Score</th><th class="num">Blamed</th><th class="num">ms / case</th><th style="min-width:120px">Share of cost</th></tr></thead><tbody>` +
+    AG.map(a => { const sc = s.components[a]; const sh = s.agent_cost_usd[a] / totCost;
+      return `<tr><td>${agTag(a)}</td><td class="mono" style="font-size:11.5px">${(r.prompts[a] || "").split("@")[1]}<div class="why">${r.config.models[a]}</div></td>
+      <td class="num">${sc == null ? "–" : pct(sc)}<div class="why">${s.component_n[a] ? "n=" + s.component_n[a] : "not scored"}</div></td><td class="num ${s.blame[a] ? "worse" : ""}">${s.blame[a] || 0}</td>
+      <td class="num">${(s.agent_ms[a] || 0).toLocaleString()}</td><td><div class="bar-h" style="width:${sh * 100}%;background:${agc(a)}"></div><div class="why mono">${pct(sh, 0)} · $${s.agent_cost_usd[a].toFixed(4)}</div></td></tr>`; }).join("") +
+    (s.blame.network ? `<tr><td>${agTag("network")}</td><td class="why" colspan="2">handoff loop guard tripped</td><td class="num worse">${s.blame.network}</td><td></td><td></td></tr>` : "") +
+    (s.blame.dataset ? `<tr><td>${agTag("dataset")}</td><td class="why" colspan="2">all agents passed; suspect label or data</td><td class="num">${s.blame.dataset}</td><td></td><td></td></tr>` : "") + "</tbody>";
+  const cl = r.clusters, mx = Math.max(1, ...cl.map(c => c.n));
+  $("#clusterTbl").innerHTML = `<thead><tr><th>Failure signature</th><th class="num">Cases</th><th>Examples</th></tr></thead><tbody>` +
+    (cl.length ? cl.map(c => { const ag = c.signature.split(":")[0];
+      return `<tr><td>${agTag(ag)}<div class="why" style="margin-top:3px">${esc(c.signature.split(": ").slice(1).join(": "))}</div><div class="why mono" style="font-size:11px">${Object.entries(c.categories).map(([k, v]) => `${k.replace("_", " ")} ${v}`).join(" · ")}</div></td>
+      <td class="num"><b>${c.n}</b><div class="bar-h" style="width:${c.n / mx * 60}px;margin-left:auto;background:${agc(ag)}"></div></td>
+      <td>${c.examples.map(x => `<button class="chip" data-c="${x}" style="cursor:pointer;margin:2px">${x}</button>`).join("")}</td></tr>`; }).join("")
+      : `<tr><td colspan="3" class="why">No failures in this run.</td></tr>`) + "</tbody>";
+  $("#clusterTbl").querySelectorAll("button[data-c]").forEach(b => b.addEventListener("click", () => { caseId = b.dataset.c; renderDiff(); renderCase(); $("#caseView").scrollIntoView({behavior: "smooth", block: "start"}); }));
+}
+
+// ---------- registry & dataset ----------
+(function () {
+  $("#registry").innerHTML = D.registry.map(p => `<details><summary>${agTag(p.agent)}<b class="mono">@${p.version}</b><span class="mono why">#${p.hash}</span>
+    <span class="why">${p.runs.length ? "used in " + p.runs.join(", ") : "not used yet"}</span></summary><p>${esc(p.text)}</p></details>`).join("");
+  const ds = D.dataset;
+  $("#dsPanel").innerHTML = `<h3 style="margin-bottom:8px">${ds.n} cases in every run</h3>
+    <table><tbody>${Object.entries(ds.sources).map(([k, v]) => `<tr><td>${k === "golden" ? "Golden set, hand-labelled" : "Promoted from production (CS overrides, then labelled)"}</td><td class="num">${v}</td></tr>`).join("")}
+    ${Object.entries(ds.categories).map(([k, v]) => `<tr><td class="why">${k.replace("_", " ")}</td><td class="num">${v}</td></tr>`).join("")}</tbody></table>
+    <p class="why" style="margin:10px 0 0">The same seed builds the same world as the production stack, so a case here can be traced back to the live complaint it came from.</p>`;
+})();
+
+function renderAll() { renderRuns(); renderTrends(); renderDiff(); renderComponents(); }
+renderAll();
+let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(renderTrends, 150); });
+</script>

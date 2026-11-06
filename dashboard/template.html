@@ -1,0 +1,444 @@
+<title>Merlion Triage Observability</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: ops console. Sticky section nav, summary first, then evidence, then drill-down. Version colour (v0.1 orange / v0.2 blue) is the one encoding used everywhere. */
+:root {
+  --bg: #f4f6f6; --surface: #ffffff; --sunk: #eaeeee; --ink: #142120; --ink-2: #4a5958; --muted: #74817f;
+  --line: #dbe2e1; --accent: #0e6a66;
+  --v1: #eb6834; --v2: #2a78d6; --band: rgba(235,104,52,.07); --inc: rgba(208,59,59,.10);
+  --good: #0ca30c; --warn: #fab219; --serious: #ec835a; --crit: #d03b3b; --good-ink: #0a7a0a; --crit-ink: #b42f2f;
+  --seq1: #e8f0fb; --seq2: #b7d3f6; --seq3: #6da7ec; --seq4: #2a78d6; --seq5: #184f95;
+  --f-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #111615; --surface: #19201f; --sunk: #212a29; --ink: #edf2f1; --ink-2: #b5c1bf; --muted: #8b9896;
+  --line: #2b3533; --accent: #55b8b1; --v1: #d95926; --v2: #3987e5; --band: rgba(217,89,38,.10); --inc: rgba(230,103,103,.13);
+  --good-ink: #3fc23f; --crit-ink: #ec7171;
+  --seq1: #1d2a3a; --seq2: #184f95; --seq3: #256abf; --seq4: #3987e5; --seq5: #86b6ef; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #111615; --surface: #19201f; --sunk: #212a29; --ink: #edf2f1; --ink-2: #b5c1bf; --muted: #8b9896;
+  --line: #2b3533; --accent: #55b8b1; --v1: #d95926; --v2: #3987e5; --band: rgba(217,89,38,.10); --inc: rgba(230,103,103,.13);
+  --good-ink: #3fc23f; --crit-ink: #ec7171;
+  --seq1: #1d2a3a; --seq2: #184f95; --seq3: #256abf; --seq4: #3987e5; --seq5: #86b6ef; color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 14px/1.5 var(--f-body); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.top { background: var(--surface); border-bottom: 1px solid var(--line); }
+header.top .wrap { padding-block: 22px 18px; display: flex; flex-wrap: wrap; gap: 12px 32px; align-items: end; justify-content: space-between; }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 600; text-wrap: balance; margin: 0; letter-spacing: .005em; }
+h1 { font-size: 28px; line-height: 1.15; }
+h2 { font-size: 21px; }
+h3 { font-size: 15px; }
+.eyebrow { font: 500 11px/1 var(--f-mono); letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+.sub { color: var(--ink-2); max-width: 68ch; margin: 6px 0 0; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--ink-2); align-items: center; }
+.sw { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.synthetic { font: 500 11.5px/1.3 var(--f-mono); color: var(--ink-2); border: 1px dashed var(--muted); border-radius: 4px; padding: 6px 9px; }
+
+nav.sec { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(6px); border-bottom: 1px solid var(--line); }
+nav.sec .wrap { display: flex; gap: 4px; overflow-x: auto; padding-block: 8px; scrollbar-width: none; }
+nav.sec a { color: var(--ink-2); text-decoration: none; font-size: 13px; padding: 5px 10px; border-radius: 5px; white-space: nowrap; }
+nav.sec a:hover, nav.sec a:focus-visible { background: var(--sunk); color: var(--ink); outline: none; }
+
+main .wrap { display: grid; gap: 44px; padding-block: 28px 64px; }
+section { display: grid; gap: 16px; min-width: 0; scroll-margin-top: 56px; }
+.head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 24px; align-items: end; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; min-width: 0; }
+.grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr)); gap: 16px; }
+
+/* KPI strip */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.kpi { background: var(--surface); padding: 14px 16px; display: grid; gap: 4px; align-content: start; }
+.kpi .label { font-size: 12.5px; color: var(--ink-2); }
+.kpi .val { font: 600 26px/1.1 var(--f-display); font-variant-numeric: tabular-nums; }
+.kpi .cmp { font: 12px/1.3 var(--f-mono); color: var(--muted); }
+.kpi .cmp b { font-weight: 500; }
+.better { color: var(--good-ink); } .worse { color: var(--crit-ink); }
+
+/* chips */
+.chip { display: inline-flex; align-items: center; gap: 5px; font: 500 11.5px/1 var(--f-mono); padding: 4px 7px; border-radius: 4px; white-space: nowrap; border: 1px solid var(--line); color: var(--ink); background: var(--surface); }
+.chip i { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.chip.pass i { background: var(--good); } .chip.fail i { background: var(--crit); } .chip.page i { background: var(--crit); }
+.chip.ticket i { background: var(--warn); } .chip.warning i { background: var(--warn); } .chip.critical i { background: var(--crit); }
+.ver { font: 500 11.5px/1 var(--f-mono); padding: 3px 6px; border-radius: 3px; color: #fff; }
+.ver.v01 { background: var(--v1); } .ver.v02 { background: var(--v2); }
+
+/* tables */
+.tbl { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; }
+th { text-align: left; font: 500 11px/1.2 var(--f-mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 9px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--f-mono); font-size: 12.5px; }
+.why { color: var(--ink-2); font-size: 12.5px; }
+code, .mono { font-family: var(--f-mono); font-size: 12.5px; }
+
+/* charts */
+.charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 520px), 1fr)); gap: 16px; }
+.chart h3 { margin-bottom: 2px; }
+.chart .desc { color: var(--ink-2); font-size: 12.5px; margin: 0 0 6px; }
+svg text { font-family: var(--f-mono); font-size: 10.5px; fill: var(--muted); }
+svg .axis { stroke: var(--line); }
+svg .grid { stroke: var(--line); stroke-dasharray: 2 3; }
+#tip { position: fixed; z-index: 20; pointer-events: none; background: var(--ink); color: var(--bg); font: 12px/1.45 var(--f-mono); padding: 7px 9px; border-radius: 5px; max-width: 280px; box-shadow: 0 4px 16px rgba(0,0,0,.18); }
+
+/* alert strip */
+.strip { display: grid; grid-template-columns: repeat(28, minmax(6px, 1fr)); gap: 2px; min-width: 196px; }
+.strip span { height: 14px; border-radius: 2px; background: var(--sunk); }
+.strip span.on.page { background: var(--crit); } .strip span.on.ticket { background: var(--warn); }
+
+/* heatmap */
+.heat td.cell { text-align: center; font: 500 12.5px/1 var(--f-mono); padding: 9px 4px; min-width: 52px; border-bottom: 2px solid var(--surface); border-right: 2px solid var(--surface); border-radius: 3px; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { font: 500 12.5px var(--f-body); border: 0; background: var(--surface); color: var(--ink-2); padding: 6px 11px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* explorer */
+.explorer { display: grid; grid-template-columns: minmax(0, 300px) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 760px) { .explorer { grid-template-columns: 1fr; } }
+.tlist { display: grid; gap: 6px; align-content: start; }
+.tlist button { text-align: left; display: grid; gap: 5px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; color: var(--ink); cursor: pointer; font: inherit; }
+.tlist button:hover { border-color: var(--muted); }
+.tlist button[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.tlist button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.tlist .r1 { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.tlist .r2 { font-size: 12.5px; color: var(--ink-2); }
+.wf { display: grid; gap: 3px; }
+.wf button { display: grid; grid-template-columns: minmax(110px, 170px) 1fr 62px; gap: 10px; align-items: center; background: none; border: 0; padding: 4px 6px; border-radius: 4px; color: var(--ink); cursor: pointer; font: 12.5px var(--f-mono); text-align: left; }
+.wf button:hover, .wf button[aria-pressed="true"] { background: var(--sunk); }
+.wf .track { position: relative; height: 12px; }
+.wf .bar { position: absolute; top: 0; height: 12px; border-radius: 2px; min-width: 2px; }
+.bar.agent { background: var(--muted); opacity: .35; } .bar.llm { background: var(--accent); } .bar.tool { background: var(--ink-2); } .bar.error { background: var(--crit); }
+.wf .ms { text-align: right; color: var(--muted); font-variant-numeric: tabular-nums; }
+pre.attrs { background: var(--sunk); border-radius: 6px; padding: 12px; margin: 0; overflow: auto; max-height: 300px; font: 12px/1.5 var(--f-mono); white-space: pre-wrap; word-break: break-word; }
+.cmpbox { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 200px), 1fr)); gap: 10px; }
+.cmpbox div { background: var(--sunk); border-radius: 6px; padding: 10px 12px; font-size: 13px; }
+.checks-list { display: flex; flex-wrap: wrap; gap: 6px; }
+
+.bars { display: grid; gap: 8px; }
+.bars .row { display: grid; grid-template-columns: 130px 1fr; gap: 10px; align-items: center; font-size: 12.5px; }
+.bars .pair { display: grid; gap: 3px; }
+.bars .b { height: 9px; border-radius: 0 3px 3px 0; position: relative; }
+.bars .b span { position: absolute; left: calc(100% + 6px); top: -3px; font: 11px var(--f-mono); color: var(--ink-2); white-space: nowrap; }
+ol.steps { margin: 0; padding-left: 20px; display: grid; gap: 8px; max-width: 75ch; }
+@media (prefers-reduced-motion: no-preference) { .tlist button, .wf button { transition: background .12s, border-color .12s; } }
+</style>
+
+<header class="top"><div class="wrap">
+  <div>
+    <div class="eyebrow">Merlion Logistics · Complaint triage agent</div>
+    <h1>Triage agent observability</h1>
+    <p class="sub" id="period"></p>
+  </div>
+  <div style="display:grid;gap:8px;justify-items:start">
+    <div class="legend"><span><i class="sw" style="background:var(--v1)"></i>v0.1 naive build</span><span><i class="sw" style="background:var(--v2)"></i>v0.2 current</span><span><i class="sw" style="background:var(--inc);outline:1px solid var(--crit)"></i>Rate-card OCR incident</span></div>
+    <div class="synthetic">Synthetic data that reproduces the client brief's landmines. Not Merlion's real records.</div>
+  </div>
+</div></header>
+<nav class="sec" aria-label="Sections"><div class="wrap">
+  <a href="#now">Now</a><a href="#alerts">Alerts</a><a href="#trends">Trends</a><a href="#guardrails">Guardrails</a><a href="#evals">Evals</a><a href="#drivers">Drivers &amp; zones</a><a href="#tools">Tools</a><a href="#traces">Traces</a><a href="#wiring">Wiring</a>
+</div></nav>
+
+<main><div class="wrap">
+  <section id="now">
+    <div class="head"><div><div class="eyebrow">Last 7 days · v0.2 in production</div><h2>Current health</h2></div></div>
+    <div class="kpis" id="kpis"></div>
+  </section>
+
+  <section id="alerts">
+    <div class="head"><div><div class="eyebrow">Daily rule evaluation</div><h2>Alerts fired</h2>
+      <p class="sub">Each square is a day from 5 Oct to 1 Nov. Red pages someone; amber opens a ticket.</p></div></div>
+    <div class="panel tbl"><table id="alertTbl"></table></div>
+  </section>
+
+  <section id="trends">
+    <div class="head"><div><div class="eyebrow">Production, per day</div><h2>Quality, latency and cost over time</h2>
+      <p class="sub">v0.2 went live on 19 Oct after the offline evals caught v0.1's failures. The incident band marks 28–29 Oct, when the rate-card OCR service slowed down and timed out.</p></div></div>
+    <div class="charts" id="charts"></div>
+  </section>
+
+  <section id="guardrails">
+    <div class="head"><div><div class="eyebrow">Online checks on every trace · no ground truth needed</div><h2>Guardrails</h2>
+      <p class="sub">The first three checks target the three landmines in Priya's brief. They run on what production can see: the trace's spans and the ops database.</p></div></div>
+    <div class="panel tbl"><table id="checkTbl"></table></div>
+    <div class="panel" id="dq"></div>
+  </section>
+
+  <section id="evals">
+    <div class="head"><div><div class="eyebrow">Offline · 90 labelled emails · runs in CI</div><h2>Release gates</h2>
+      <p class="sub">The same golden set runs against every prompt, model or tool change. Any failed gate blocks the deploy.</p></div></div>
+    <div class="grid2">
+      <div class="panel tbl"><table id="evalTbl"></table></div>
+      <div class="panel"><h3>Resolution accuracy by complaint type</h3><p class="why" style="margin:2px 0 14px">v0.1 misses "not received" claims when it reads GPS in the wrong timezone, and legacy refunds when it picks the wrong system's order.</p><div class="bars" id="catBars"></div></div>
+    </div>
+    <div class="panel tbl"><h3 style="margin-bottom:8px">Sample eval failures</h3><table id="failTbl"></table></div>
+  </section>
+
+  <section id="drivers">
+    <div class="head"><div><div class="eyebrow">Priya's weekly view</div><h2>Complaints by driver and zone</h2>
+      <p class="sub">Attributed by the agent from the order it resolved. Weeks of 5 and 12 Oct ran on v0.1, so its wrong order matches and misread postal codes also skew this view.</p></div>
+      <div class="seg" role="group" aria-label="Count"><button id="hAll" aria-pressed="true">All complaints</button><button id="hSub" aria-pressed="false">Substantiated only</button></div></div>
+    <div class="grid2">
+      <div class="panel tbl"><table class="heat" id="heat"></table></div>
+      <div class="panel tbl"><h3 style="margin-bottom:4px">Zone attribution vs ground truth</h3><p class="why" style="margin:0 0 8px">v2 complaints per zone. "True" comes from the synthetic labels; the agent columns come from its traces.</p><table id="zoneTbl"></table></div>
+    </div>
+  </section>
+
+  <section id="tools">
+    <div class="head"><div><div class="eyebrow">Span-level, production</div><h2>Tool and model calls</h2></div></div>
+    <div class="panel tbl"><table id="spanTbl"></table></div>
+  </section>
+
+  <section id="traces">
+    <div class="head"><div><div class="eyebrow">Drill-down</div><h2>Trace explorer</h2>
+      <p class="sub">Example traces picked from production: each failure the guardrails catch, plus clean v0.2 runs. Select a span to see its attributes. PII is redacted before storage.</p></div></div>
+    <div class="explorer"><div class="tlist" id="tlist"></div><div class="panel" id="tdetail" style="display:grid;gap:14px"></div></div>
+  </section>
+
+  <section id="wiring">
+    <div class="head"><div><div class="eyebrow">From demo to production</div><h2>Wiring it to the real agent</h2></div></div>
+    <div class="panel"><ol class="steps">
+      <li>Replace <code>data.build()</code> with a loader for <code>sql/merlion_ops.sql</code> and <code>logs/gps_pings_sample.jsonl</code>. The agent and checks only depend on the table shapes.</li>
+      <li>Keep the <code>with tracer.span(...)</code> blocks in <code>agent.py</code> and swap the simulated bodies for real model and tool calls. Token counts come from the API response.</li>
+      <li>Hand-label Priya's 90 sample emails into <code>golden_set.json</code>, then run <code>python -m merlion_obs.evals --version vX</code> in CI. A non-zero exit blocks the merge.</li>
+      <li>Run <code>run_checks()</code> after each trace, or every few minutes, and post <code>alerts.evaluate()</code> output to the CS team's channel.</li>
+      <li>Record the CS reviewer's final decision in <code>feedback</code>. Override rate is the only quality signal that needs no labels.</li>
+      <li>When you outgrow SQLite, post <code>out/otlp_traces.json</code> to any OpenTelemetry collector (Phoenix, Langfuse, Jaeger, Tempo). The span names and attributes carry over.</li>
+    </ol></div>
+  </section>
+</div></main>
+<div id="tip" hidden></div>
+
+<script>
+const D = /*DATA*/null;
+const $ = s => document.querySelector(s);
+const pct = (x, d = 1) => (x * 100).toFixed(d) + "%";
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const vcls = v => v === "v0.1" ? "v01" : "v02";
+const vchip = v => `<span class="ver ${vcls(v)}">${v}</span>`;
+const day = s => { const d = new Date(s + "T00:00:00"); return d.getDate() + " " + d.toLocaleString("en-SG", {month: "short"}); };
+const tip = $("#tip");
+function showTip(e, html) { tip.innerHTML = html; tip.hidden = false; const w = tip.offsetWidth, h = tip.offsetHeight; let x = e.clientX + 14, y = e.clientY + 14; if (x + w > innerWidth - 8) x = e.clientX - w - 14; if (y + h > innerHeight - 8) y = e.clientY - h - 14; tip.style.left = x + "px"; tip.style.top = y + "px"; }
+const hideTip = () => tip.hidden = true;
+
+$("#period").textContent = `${day(D.period[0])} – ${day(D.period[1])} 2026 · ${D.totals.traces} complaints traced · ${D.totals.spans.toLocaleString()} spans · ${D.totals.redactions} PII values redacted before storage`;
+
+// ---------- KPIs (last 7 days vs v0.1 period) ----------
+(function () {
+  const last = D.daily.slice(-7), v1 = D.by_version["v0.1"];
+  const sum = (a, k) => a.reduce((s, r) => s + r[k] * r.n, 0) / a.reduce((s, r) => s + r.n, 0);
+  const n = last.reduce((s, r) => s + r.n, 0);
+  const p95 = Math.max(...last.map(r => r.p95_latency_s));
+  const items = [
+    ["Complaints triaged", n, null, v => v],
+    ["Critical guardrail failures", sum(last, "critical_fail_rate"), v1.critical_fail_rate, v => pct(v), true],
+    ["CS overrides of the agent", sum(last, "override_rate"), v1.override_rate, v => pct(v), true],
+    ["Handed back to a human", sum(last, "escalation_rate"), v1.escalation_rate, v => pct(v), true],
+    ["Worst daily p95 latency", p95, v1.p95_latency_s, v => v.toFixed(1) + " s", true],
+    ["Model cost per complaint", sum(last, "cost_per_complaint"), v1.cost_per_complaint, v => "US$" + v.toFixed(3), true],
+  ];
+  $("#kpis").innerHTML = items.map(([l, v, b, f, lowGood]) => {
+    let cmp = "";
+    if (b != null) { const better = lowGood ? v < b : v > b; const same = Math.abs(v - b) < 1e-9;
+      cmp = `<div class="cmp">v0.1: <b class="${same ? "" : better ? "better" : "worse"}">${f(b)}</b></div>`; }
+    else cmp = `<div class="cmp">${day(last[0].day)} – ${day(last[last.length - 1].day)}</div>`;
+    return `<div class="kpi"><div class="label">${l}</div><div class="val">${f(v)}</div>${cmp}</div>`;
+  }).join("");
+})();
+
+// ---------- Alerts ----------
+(function () {
+  const days = D.daily.map(r => r.day);
+  const rows = D.alert_rules.map(r => {
+    const fired = D.alerts.filter(a => a.rule === r.rule);
+    const on = new Set(fired.map(a => a.day));
+    const vs = [...new Set(fired.map(a => a.version))];
+    const strip = days.map(d => { const a = fired.find(x => x.day === d);
+      return `<span class="${a ? "on " + r.severity : ""}" data-t="${a ? esc(day(d) + ": " + (+a.value).toPrecision(3) + " (" + r.op + " " + r.threshold + ")") : esc(day(d) + ": ok")}"></span>`; }).join("");
+    return `<tr><td><b class="mono">${r.rule}</b><div class="why">${esc(r.why)}</div></td>
+      <td><span class="chip ${r.severity}"><i></i>${r.severity}</span></td>
+      <td class="mono" style="white-space:nowrap">${esc(r.metric)} ${r.op} ${r.threshold}</td>
+      <td class="num">${on.size}</td><td>${vs.map(vchip).join(" ") || '<span class="why">never</span>'}</td>
+      <td><div class="strip">${strip}</div></td></tr>`;
+  });
+  $("#alertTbl").innerHTML = `<thead><tr><th>Rule</th><th>Severity</th><th>Condition</th><th class="num">Days</th><th>Version</th><th>5 Oct → 1 Nov</th></tr></thead><tbody>${rows.join("")}</tbody>`;
+  $("#alertTbl").addEventListener("mousemove", e => { const t = e.target.dataset?.t; t ? showTip(e, t) : hideTip(); });
+  $("#alertTbl").addEventListener("mouseleave", hideTip);
+})();
+
+// ---------- Line charts ----------
+const CHARTS = [
+  ["critical_fail_rate", "Critical guardrail failures", "Share of complaints where a customer-facing decision may be wrong.", v => pct(v, 0), 0.05],
+  ["override_rate", "CS override rate", "Share of recommendations the CS reviewer changed.", v => pct(v, 0), 0.12],
+  ["p95_latency_s", "p95 latency", "Seconds from email in to recommendation out.", v => v.toFixed(0) + "s", 12],
+  ["tool_error_rate", "Tool error rate", "Share of complaints with at least one failed tool call.", v => pct(v, 0), 0.05],
+  ["escalation_rate", "Escalation rate", "Share handed back to a human because evidence was missing.", v => pct(v, 0), 0.15],
+  ["cost_usd", "Daily model spend", "US$ per day across all model calls.", v => "$" + v.toFixed(2), 1.0],
+];
+function drawCharts() {
+  const host = $("#charts");
+  host.innerHTML = CHARTS.map((c, i) => `<div class="panel chart"><h3>${c[1]}</h3><p class="desc">${c[2]}</p><div id="ch${i}"></div></div>`).join("");
+  CHARTS.forEach((c, i) => lineChart($("#ch" + i), c));
+}
+function lineChart(el, [key, title, , fmt, thr]) {
+  const rows = D.daily, W = Math.max(280, el.clientWidth), H = 170, m = {l: 40, r: 10, t: 10, b: 22};
+  const n = rows.length, iw = W - m.l - m.r, ih = H - m.t - m.b;
+  const max = Math.max(thr * 1.25, ...rows.map(r => r[key])) * 1.08;
+  const x = i => m.l + (i + .5) * iw / n, y = v => m.t + ih - v / max * ih;
+  const dep = rows.findIndex(r => r.day >= D.events.deploy_v02);
+  const i0 = rows.findIndex(r => r.day === D.events.incident[0]), i1 = rows.findIndex(r => r.day === D.events.incident[1]);
+  const ticks = [0, max / 2 / 1.08, max / 1.08].map(v => +v.toPrecision(2));
+  let s = `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="${esc(title)} per day">`;
+  s += `<rect x="${m.l}" y="${m.t}" width="${x(dep) - iw / n / 2 - m.l}" height="${ih}" fill="var(--band)"/>`;
+  s += `<rect x="${x(i0) - iw / n / 2}" y="${m.t}" width="${(i1 - i0 + 1) * iw / n}" height="${ih}" fill="var(--inc)"/>`;
+  ticks.forEach(t => { s += `<line class="grid" x1="${m.l}" x2="${W - m.r}" y1="${y(t)}" y2="${y(t)}"/><text x="${m.l - 6}" y="${y(t) + 3.5}" text-anchor="end">${fmt(t)}</text>`; });
+  s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(thr)}" y2="${y(thr)}" stroke="var(--crit)" stroke-width="1" stroke-dasharray="5 3"/>`;
+  s += `<text x="${W - m.r}" y="${y(thr) - 4}" text-anchor="end" style="fill:var(--crit-ink)">alert ${fmt(thr)}</text>`;
+  s += `<line class="axis" x1="${m.l}" x2="${W - m.r}" y1="${m.t + ih}" y2="${m.t + ih}"/>`;
+  rows.forEach((r, i) => { if (i % 7 === 0) s += `<text x="${x(i)}" y="${H - 6}" text-anchor="middle">${day(r.day)}</text>`; });
+  ["v0.1", "v0.2"].forEach(v => {
+    const pts = rows.map((r, i) => [i, r]).filter(([, r]) => r.version === v);
+    s += `<polyline fill="none" stroke="var(--${v === "v0.1" ? "v1" : "v2"})" stroke-width="2" stroke-linejoin="round" points="${pts.map(([i, r]) => x(i) + "," + y(r[key])).join(" ")}"/>`;
+  });
+  rows.forEach((r, i) => { s += `<circle cx="${x(i)}" cy="${y(r[key])}" r="2.6" fill="var(--${r.version === "v0.1" ? "v1" : "v2"})" stroke="var(--surface)" stroke-width="1.5"/>`; });
+  s += `<line class="xh" x1="0" x2="0" y1="${m.t}" y2="${m.t + ih}" stroke="var(--muted)" visibility="hidden"/>`;
+  s += `<rect x="${m.l}" y="${m.t}" width="${iw}" height="${ih}" fill="transparent" class="hit"/></svg>`;
+  el.innerHTML = s;
+  const svg = el.querySelector("svg"), xh = svg.querySelector(".xh");
+  svg.querySelector(".hit").addEventListener("mousemove", e => {
+    const b = svg.getBoundingClientRect(), px = (e.clientX - b.left) * W / b.width;
+    const i = Math.max(0, Math.min(n - 1, Math.floor((px - m.l) / (iw / n)))), r = rows[i];
+    xh.setAttribute("x1", x(i)); xh.setAttribute("x2", x(i)); xh.setAttribute("visibility", "visible");
+    showTip(e, `<b>${day(r.day)}</b> · ${r.version}<br>${esc(title)}: ${fmt(r[key])}<br>${r.n} complaints`);
+  });
+  svg.querySelector(".hit").addEventListener("mouseleave", () => { xh.setAttribute("visibility", "hidden"); hideTip(); });
+}
+drawCharts();
+let rz; addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(drawCharts, 150); });
+
+// ---------- Guardrails ----------
+(function () {
+  const meta = {
+    order_disambiguation: ["critical", "Order numbers repeat across v1 and v2", "When a number matches orders in both systems, the agent must pick one using the customer email and the date in the complaint."],
+    timezone_alignment: ["critical", "GPS and delivery times disagree", "GPS pings are UTC; delivery times are naive Singapore time. The check looks for pings at the address 8 hours either side of the window the agent used."],
+    postal_code_valid: ["warning", "Postal codes that are not 6 digits", "The agent must not geocode or zone a delivery from an invalid code. Falling back to the street address passes."],
+    evidence_grounding: ["critical", "Rejections need evidence", "Rejecting a 'not received' claim needs a POD scan and a GPS ping within 100 m of the address."],
+    amount_within_policy: ["critical", "Money out", "A refund or compensation needs an amount between S$0 and the S$100 damage cap."],
+    pii_leak: ["critical", "Customer PII in traces", "Emails, SG phone numbers and NRIC/FIN must be redacted before a span is stored."],
+    tool_errors: ["warning", "Tool reliability", "Any span that raised an error or timed out."],
+    latency_budget: ["warning", "Latency budget", "Whole triage under 12 seconds."],
+    cost_budget: ["warning", "Cost budget", "Model spend under US$0.03 per complaint."],
+  };
+  const V = D.by_version;
+  const cell = (v, c) => { const f = V[v].check_fail[c] || 0, n = V[v].check_n[c] || 0;
+    return `<td class="num"><span class="${f ? "worse" : ""}">${f}</span> <span class="why">/ ${n}</span></td>`; };
+  $("#checkTbl").innerHTML = `<thead><tr><th>Check</th><th>Guards against</th><th>Severity</th><th class="num">v0.1 fails</th><th class="num">v0.2 fails</th></tr></thead><tbody>` +
+    Object.entries(meta).map(([c, [sev, what, how]]) => `<tr><td class="mono" style="white-space:nowrap">${c}</td><td><b>${what}</b><div class="why">${how}</div></td><td><span class="chip ${sev}"><i></i>${sev}</span></td>${cell("v0.1", c)}${cell("v0.2", c)}</tr>`).join("") + "</tbody>";
+  const q = D.data_quality;
+  $("#dq").innerHTML = `<h3 style="margin-bottom:8px">How often the landmines show up in real traffic</h3>
+    <div class="cmpbox"><div><div class="eyebrow">Order collisions</div><div style="font:600 22px var(--f-display)">${pct(q.collisions / q.lookups, 0)}</div>of ${q.lookups} order lookups matched an order in both v1 and v2.</div>
+    <div><div class="eyebrow">Invalid postal codes</div><div style="font:600 22px var(--f-display)">${pct(q.bad_postal / q.v2_lookups, 1)}</div>of ${q.v2_lookups} v2 deliveries carry a code that is not a valid 6-digit SG code.</div>
+    <div><div class="eyebrow">Timezone offset</div><div style="font:600 22px var(--f-display)">+8 h</div>between UTC GPS pings and delivery times stored as naive local time.</div></div>`;
+})();
+
+// ---------- Evals ----------
+(function () {
+  const E = D.evals, a = E["v0.1"], b = E["v0.2"];
+  const rows = [["order_accuracy", "Right order found", ">= 95%", v => pct(v)], ["resolution_accuracy", "Right resolution", ">= 90%", v => pct(v)],
+    ["wrongful_reject_rate", "Valid claims wrongly rejected", "<= 2%", v => pct(v)], ["critical_check_fail_rate", "Critical guardrail failures", "<= 2%", v => pct(v)],
+    ["p95_latency_s", "p95 latency", "<= 12 s", v => v.toFixed(1) + " s"], ["amount_accuracy", "Right amount, when right action", "tracked", v => pct(v)],
+    ["escalation_rate", "Escalated", "tracked", v => pct(v)], ["mean_cost_usd", "Cost per complaint", "tracked", v => "US$" + v.toFixed(3)]];
+  const c = (m, k, f) => { const g = m.gates[k]; return `<td class="num">${f(m[k])} ${g === undefined ? "" : `<span class="chip ${g ? "pass" : "fail"}"><i></i>${g ? "pass" : "fail"}</span>`}</td>`; };
+  $("#evalTbl").innerHTML = `<thead><tr><th>Metric</th><th>Gate</th><th class="num">${vchip("v0.1")}</th><th class="num">${vchip("v0.2")}</th></tr></thead><tbody>` +
+    rows.map(([k, l, g, f]) => `<tr><td>${l}</td><td class="mono why">${g}</td>${c(a, k, f)}${c(b, k, f)}</tr>`).join("") +
+    `<tr><td><b>Release decision</b></td><td></td><td class="num"><span class="chip ${a.passed ? "pass" : "fail"}"><i></i>${a.passed ? "ship" : "blocked"}</span></td><td class="num"><span class="chip ${b.passed ? "pass" : "fail"}"><i></i>${b.passed ? "ship" : "blocked"}</span></td></tr></tbody>`;
+  const label = {damaged: "Damaged", late: "Late", not_received: "Not received", overcharged: "Overcharged", refund_followup: "Legacy refund"};
+  $("#catBars").innerHTML = Object.keys(a.by_category).map(k => `<div class="row"><div>${label[k]}</div><div class="pair" style="padding-right:44px">
+    <div class="b" style="width:${a.by_category[k] * 100}%;background:var(--v1)"><span>${pct(a.by_category[k], 0)}</span></div>
+    <div class="b" style="width:${b.by_category[k] * 100}%;background:var(--v2)"><span>${pct(b.by_category[k], 0)}</span></div></div></div>`).join("") +
+    `<div class="legend" style="margin-top:6px"><span><i class="sw" style="background:var(--v1)"></i>v0.1</span><span><i class="sw" style="background:var(--v2)"></i>v0.2</span></div>`;
+  const F = [...D.eval_failures["v0.1"].map(f => ({...f, v: "v0.1"})), ...D.eval_failures["v0.2"].map(f => ({...f, v: "v0.2"}))];
+  $("#failTbl").innerHTML = `<thead><tr><th>Version</th><th>Email</th><th>Type</th><th>Expected</th><th>Agent said</th><th>Order expected</th><th>Order found</th></tr></thead><tbody>` +
+    F.map(f => `<tr><td>${vchip(f.v)}</td><td class="mono">${f.email_id}</td><td>${label[f.category]}</td><td class="mono">${f.expected}</td><td class="mono worse">${f.got}</td><td class="mono">${f.order_expected}</td><td class="mono ${f.order_expected !== f.order_got ? "worse" : ""}">${f.order_got}</td></tr>`).join("") + "</tbody>";
+})();
+
+// ---------- Drivers heatmap ----------
+let heatKey = "complaints";
+function drawHeat() {
+  const W = D.weekly.filter(r => r.dim === "driver"), weeks = [...new Set(W.map(r => r.week))].sort(), drivers = [...new Set(W.map(r => r.key))].sort();
+  const get = (w, d) => (W.find(r => r.week === w && r.key === d) || {})[heatKey] || 0;
+  const max = Math.max(...W.map(r => r[heatKey]));
+  const step = v => v === 0 ? "var(--surface)" : `var(--seq${Math.min(5, 1 + Math.floor(v / max * 4.999))})`;
+  const ink = v => v / max > .55 ? "#fff" : "var(--ink)";
+  const zone = {}; D.weekly.forEach(r => { if (r.dim === "driver") zone[r.key] = zone[r.key]; });
+  const tot = d => weeks.reduce((s, w) => s + get(w, d), 0);
+  const order = drivers.sort((p, q) => tot(q) - tot(p));
+  $("#heat").innerHTML = `<thead><tr><th>Driver</th>${weeks.map(w => `<th class="num">wk ${day(w)}<div style="margin-top:3px">${vchip(w >= "2026-10-19" ? "v0.2" : "v0.1")}</div></th>`).join("")}<th class="num">Total</th></tr></thead><tbody>` +
+    order.map(d => `<tr><td class="mono">${d}</td>${weeks.map(w => { const v = get(w, d); return `<td class="cell" style="background:${step(v)};color:${ink(v)}" data-t="${d} · week of ${day(w)}: ${v} ${heatKey === "complaints" ? "complaints" : "substantiated"}">${v || ""}</td>`; }).join("")}<td class="num"><b>${tot(d)}</b></td></tr>`).join("") + "</tbody>";
+}
+drawHeat();
+$("#heat").addEventListener("mousemove", e => { const t = e.target.dataset?.t; t ? showTip(e, t) : hideTip(); });
+$("#heat").addEventListener("mouseleave", hideTip);
+[["#hAll", "complaints"], ["#hSub", "substantiated"]].forEach(([id, k]) => $(id).addEventListener("click", () => {
+  heatKey = k; $("#hAll").setAttribute("aria-pressed", k === "complaints"); $("#hSub").setAttribute("aria-pressed", k === "substantiated"); drawHeat(); }));
+(function () {
+  const zones = ["Central", "East", "West", "North-East", "North", "UNKNOWN"];
+  const g = (arr, v, z) => (arr.find(r => r.version === v && r.zone === z) || {}).n || 0;
+  const cell = (v, z) => { const t = g(D.zone_truth, v, z), a = g(D.zone_attr, v, z), d = a - t;
+    return `<td class="num">${t}</td><td class="num">${a}${d ? ` <span class="${Math.abs(d) > 0 ? "worse" : ""}">(${d > 0 ? "+" : ""}${d})</span>` : ""}</td>`; };
+  $("#zoneTbl").innerHTML = `<thead><tr><th>Zone</th><th class="num">True</th><th class="num">${vchip("v0.1")}</th><th class="num">True</th><th class="num">${vchip("v0.2")}</th></tr></thead><tbody>` +
+    zones.map(z => `<tr><td>${z === "UNKNOWN" ? "Unknown (bad postal code)" : z}</td>${cell("v0.1", z)}${cell("v0.2", z)}</tr>`).join("") + "</tbody>";
+})();
+
+// ---------- Spans ----------
+(function () {
+  const S = D.spans, max = Math.max(...S.map(s => s.p95_ms));
+  $("#spanTbl").innerHTML = `<thead><tr><th>Span</th><th>Kind</th><th class="num">Calls</th><th class="num">p50</th><th class="num">p95</th><th style="min-width:160px">p95 vs slowest</th><th class="num">Errors</th></tr></thead><tbody>` +
+    S.map(s => `<tr><td class="mono">${s.span}</td><td class="mono why">${s.kind}</td><td class="num">${s.calls}</td><td class="num">${(s.p50_ms / 1000).toFixed(2)} s</td><td class="num">${(s.p95_ms / 1000).toFixed(2)} s</td>
+      <td><div style="height:8px;border-radius:0 3px 3px 0;width:${s.p95_ms / max * 100}%;background:${s.kind === "llm" ? "var(--accent)" : "var(--ink-2)"}"></div></td>
+      <td class="num ${s.error_rate ? "worse" : ""}">${s.error_rate ? pct(s.error_rate) : "0"}</td></tr>`).join("") + "</tbody>";
+})();
+
+// ---------- Trace explorer ----------
+(function () {
+  const tagName = {tz: "Timezone misread", order: "Wrong system's order", postal: "Bad postal code", incident: "OCR timeout", ok: "Clean run"};
+  const X = D.explorer;
+  $("#tlist").innerHTML = X.map((t, i) => {
+    const bad = t.checks.filter(c => !c.passed);
+    return `<button data-i="${i}" aria-pressed="false"><div class="r1">${vchip(t.version)}<b>${tagName[t.tag]}</b></div>
+      <div class="r2">${day(t.day)} · ${esc(t.category.replace("_", " "))} → <span class="mono">${t.resolution}</span>${t.resolution !== t.truth.resolution ? ` <span class="worse">(should be ${t.truth.resolution})</span>` : ""}</div>
+      <div class="r2">${bad.length ? bad.map(c => `<span class="mono worse">${c.check}</span>`).join(", ") : '<span class="better">all checks pass</span>'}</div></button>`;
+  }).join("");
+  function show(i) {
+    const t = X[i];
+    document.querySelectorAll("#tlist button").forEach(b => b.setAttribute("aria-pressed", b.dataset.i == i));
+    const t0 = new Date(t.spans[0].start).getTime(), tot = t.duration_ms;
+    const depth = {}; t.spans.forEach(s => depth[s.span_id] = s.parent_id ? (depth[s.parent_id] || 0) + 1 : 0);
+    const wf = t.spans.map((s, j) => { const off = (new Date(s.start).getTime() - t0) / tot * 100, w = s.ms / tot * 100;
+      return `<button data-j="${j}" aria-pressed="false"><span style="padding-left:${depth[s.span_id] * 12}px">${s.name}</span><span class="track"><span class="bar ${s.status === "error" ? "error" : s.kind}" style="left:${off}%;width:${w}%"></span></span><span class="ms">${s.ms >= 1000 ? (s.ms / 1000).toFixed(1) + "s" : Math.round(s.ms) + "ms"}</span></button>`; }).join("");
+    $("#tdetail").innerHTML = `<div class="head"><div><div class="eyebrow mono">trace ${t.trace_id.slice(0, 16)}</div><h3>${tagName[t.tag]} · ${esc(t.category.replace("_", " "))}</h3></div>
+        <div class="legend"><span><i class="sw" style="background:var(--accent)"></i>model call</span><span><i class="sw" style="background:var(--ink-2)"></i>tool call</span><span><i class="sw" style="background:var(--crit)"></i>error</span></div></div>
+      <div class="cmpbox"><div><div class="eyebrow">Agent (${t.version})</div><b class="mono">${t.resolution}${t.amount ? " S$" + (+t.amount).toFixed(2) : ""}</b><div class="why">${(t.duration_ms / 1000).toFixed(1)} s · US$${t.cost_usd.toFixed(4)}</div></div>
+        <div><div class="eyebrow">CS reviewer</div><b class="mono">${t.feedback ? t.feedback.final : "–"}</b><div class="why">${t.feedback ? t.feedback.outcome : ""}</div></div>
+        <div><div class="eyebrow">Ground truth (synthetic label)</div><b class="mono">${t.truth.resolution}${t.truth.amount ? " S$" + (+t.truth.amount).toFixed(2) : ""}</b><div class="why mono">${t.truth.system}:${t.truth.order_no} · ${t.truth.driver_id}</div></div></div>
+      <div class="checks-list">${t.checks.map(c => `<span class="chip ${c.passed ? "pass" : "fail"}" title="${esc(c.detail)}"><i></i>${c.check}</span>`).join("")}</div>
+      ${t.checks.filter(c => !c.passed).map(c => `<div class="why"><b class="mono worse">${c.check}</b>: ${esc(c.detail)}</div>`).join("")}
+      <div class="wf" id="wf">${wf}</div><pre class="attrs" id="attrs"></pre>`;
+    const pick = j => { document.querySelectorAll("#wf button").forEach(b => b.setAttribute("aria-pressed", b.dataset.j == j));
+      const s = t.spans[j]; $("#attrs").textContent = JSON.stringify({span: s.name, kind: s.kind, status: s.status, error: s.error || undefined, ...s.attrs}, null, 2); };
+    document.querySelectorAll("#wf button").forEach(b => b.addEventListener("click", () => pick(+b.dataset.j)));
+    const firstBad = t.spans.findIndex(s => s.status === "error" || (t.tag === "tz" && s.name === "get_gps_trail") || (t.tag === "order" && s.name === "resolve_order") || (t.tag === "postal" && s.name === "get_delivery_history"));
+    pick(firstBad >= 0 ? firstBad : 0);
+  }
+  document.querySelectorAll("#tlist button").forEach(b => b.addEventListener("click", () => show(+b.dataset.i)));
+  show(0);
+})();
+</script>
