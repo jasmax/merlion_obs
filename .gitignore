@@ -1,0 +1,5 @@
+.env
+traces.db
+
+evals/eval_traces.db
+evals/results/2*.json

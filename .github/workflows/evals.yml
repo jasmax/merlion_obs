@@ -1,0 +1,30 @@
+name: Eval gate
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:        # "Run workflow" button: also runs the LLM-quality cases with the real key
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: obs-tutorial      # change to the folder that holds run_evals.py
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Run eval suite (blocks the merge if a gate fails)
+        env:
+          # Only set on manual runs, so ordinary pushes don't spend API budget.
+          OPENAI_API_KEY: ${{ github.event_name == 'workflow_dispatch' && secrets.OPENAI_API_KEY || '' }}
+        run: python run_evals.py
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: obs-tutorial/evals/results/latest.md

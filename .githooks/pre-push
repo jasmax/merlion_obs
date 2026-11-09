@@ -1,0 +1,6 @@
+#!/bin/sh
+# Release gate on your laptop: a push is blocked if the eval suite fails.
+# Enable once per clone:  git config core.hooksPath .githooks
+# Skip in an emergency:   git push --no-verify   (CI still runs the gate)
+echo "Running eval suite before push..."
+python run_evals.py || { echo "Push blocked: eval gate failed. See evals/results/latest.md"; exit 1; }
