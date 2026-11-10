@@ -206,6 +206,15 @@ class Handler(BaseHTTPRequestHandler):
 
 
 if __name__ == "__main__":
+    # Startup check for the deploy logs: which settings arrived (names only, never values) and which commit runs.
+    expected = ["API_TOKEN", "SESSION_SECRET", "DASHBOARD_USERS", "OPENAI_API_KEY", "MODEL_CLASSIFY", "MODEL_RECOMMEND"]
+    print("env: " + ", ".join(f"{k}={'set' if os.environ.get(k) else 'MISSING'}" for k in expected), flush=True)
+    print(f"commit: {os.environ.get('RAILWAY_GIT_COMMIT_SHA', 'unknown')[:7]} · "
+          f"service: {os.environ.get('RAILWAY_SERVICE_NAME', '-')} · "
+          f"environment: {os.environ.get('RAILWAY_ENVIRONMENT_NAME', '-')}", flush=True)
+    near = sorted(k for k in os.environ if "TOKEN" in k.upper() and k != "API_TOKEN")
+    if near:
+        print(f"note: similar names present: {', '.join(near)} (the server reads API_TOKEN exactly)", flush=True)
     if not API_TOKEN:
         sys.exit("API_TOKEN is not set; refusing to start an unauthenticated server.")
     if USERS and len(SESSION_SECRET) < 32:
