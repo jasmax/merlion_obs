@@ -51,7 +51,7 @@ class Tracer:
 
 
 # USD per 1M tokens: (input, cached input, output). Starting values from developers.openai.com/api/docs/pricing
-# (Nov 2026). openai_billing.py overwrites them with the prices OpenAI actually billed, via prices.json.
+# (Nov 2026). Edit prices.json to override or add models without touching code.
 PRICES = {
     "gpt-6-luna": (0.10, 0.01, 0.50),
     "gpt-6.1-terra": (1.00, 0.05, 5.00),

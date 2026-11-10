@@ -1,0 +1,12 @@
+.env
+.git
+.github
+.githooks
+.vscode
+__pycache__/
+*.db
+evals/
+dashboard.html
+metrics.json
+alerts_state.json
+alerts.log

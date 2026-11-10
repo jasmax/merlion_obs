@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: obs-tutorial      # change to the folder that holds run_evals.py
+        working-directory: .
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -27,4 +27,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: eval-results
-          path: obs-tutorial/evals/results/latest.md
+          path: evals/results/latest.md
