@@ -27,6 +27,7 @@ import agent  # noqa: E402  (after load_dotenv so model settings are read)
 import auth  # noqa: E402
 from build_dashboard import DashboardError, render  # noqa: E402
 
+API_TOKEN = os.environ.get("API_TOKEN", "")
 SESSION_SECRET = os.environ.get("SESSION_SECRET", "")
 USERS = auth.load_users()
 COOKIE = "session"
@@ -37,7 +38,7 @@ HTML_HEADERS = {
     "Content-Type": "text/html; charset=utf-8",
     "Cache-Control": "no-store",
     "X-Frame-Options": "DENY",
-    "Referrer-Policy": "no-referrer",
+    "Referrer-Policy": "same-origin",   # not "no-referrer": that makes browsers send Origin: null on form posts
     "X-Content-Type-Options": "nosniff",
     "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; "
                                "frame-ancestors 'none'; base-uri 'none'",
@@ -97,9 +98,15 @@ class Handler(BaseHTTPRequestHandler):
         return self.rfile.read(length)
 
     def _same_origin(self):
-        """Block cross-site form posts (login CSRF). Browsers send Origin on POST; other clients may omit it."""
+        """Block cross-site form posts (login CSRF). A cross-site page can't forge these headers."""
+        site = self.headers.get("Sec-Fetch-Site")          # sent by all current browsers
+        if site:
+            return site in ("same-origin", "none")
         origin = self.headers.get("Origin")
-        return origin is None or urlsplit(origin).netloc == self.headers.get("Host")
+        if origin is None:                                  # curl, scripts: not a browser CSRF
+            return True
+        hosts = {self.headers.get("Host"), self.headers.get("X-Forwarded-Host")}   # behind Railway's proxy
+        return urlsplit(origin).netloc in hosts - {None}
 
     def _user(self):
         cookie = SimpleCookie(self.headers.get("Cookie", ""))
