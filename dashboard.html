@@ -1,0 +1,63 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Merlion Triage Health</title>
+<style>
+:root { --bg:#f5f6f8; --card:#fff; --ink:#1b2330; --muted:#5d6878; --line:#dfe3ea;
+  --bar:#2a78d6; --alert:#d03b3b; --ok:#0a7a0a; --warn:#a86b00; }
+@media (prefers-color-scheme: dark) { :root { --bg:#14171c; --card:#1d2128; --ink:#e8ebf0; --muted:#9aa4b2;
+  --line:#2f3540; --bar:#4b93e8; --alert:#ef6b6b; --ok:#46c46b; --warn:#e3b04b; } }
+* { box-sizing:border-box }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif }
+main { max-width:1080px; margin:0 auto; padding:24px 16px 48px; display:grid; gap:18px }
+h1 { margin:0; font-size:24px } h2 { margin:0 0 10px; font-size:17px } h3 { font-size:15px; margin:14px 0 6px }
+.muted { color:var(--muted) }
+section { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px; min-width:0 }
+.kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px }
+.kpi b { display:block; font-size:24px; font-variant-numeric:tabular-nums }
+.kpi span { font-size:13px; color:var(--muted) }
+.two { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr)); gap:18px }
+svg { width:100%; height:auto }
+.bar { fill:var(--bar) } .bar.alert { fill:var(--alert) }
+.val, .lbl { fill:var(--muted); font-size:11px; text-anchor:middle; font-variant-numeric:tabular-nums }
+ul.alerts { list-style:none; padding:0; margin:0; display:grid; gap:8px }
+ul.alerts li { padding:8px 10px; border-radius:6px; border-left:4px solid var(--muted); background:var(--bg) }
+ul.alerts li.page { border-color:var(--alert) } ul.alerts li.ticket { border-color:var(--warn) } ul.alerts li.ok { border-color:var(--ok) }
+.hb { display:grid; grid-template-columns:150px 1fr 40px; gap:8px; align-items:center; font-size:13px; margin:4px 0 }
+.hb div { background:var(--bg); border-radius:3px; height:10px } .hb i { display:block; height:10px; border-radius:3px; background:var(--bar) }
+.hb b { text-align:right; font-variant-numeric:tabular-nums }
+.scroll { overflow-x:auto }
+table { border-collapse:collapse; width:100%; font-size:13px }
+th, td { text-align:left; padding:6px 8px; border-bottom:1px solid var(--line); white-space:nowrap }
+th { color:var(--muted); font-weight:500 } .r { text-align:right; font-variant-numeric:tabular-nums }
+code { font-size:12px }
+.pill { font-size:12px; padding:2px 7px; border-radius:10px; border:1px solid currentColor }
+.pill.pass { color:var(--ok) } .pill.fail { color:var(--alert) } .pill.warn, .pill.skipped { color:var(--warn) } .pill.info { color:var(--muted) }
+</style></head><body><main>
+<div><h1>Merlion triage health</h1>
+<p class="muted">Built 09 Nov 2026, 16:41 SGT from demo_traces.db ·
+342 complaints traced · personal data removed before storage</p></div>
+
+<section><h2>Alerts in the last hour</h2><ul class="alerts"><li class="page"><b>PAGE</b> degraded: 32% of the last 19 complaints couldn&#x27;t be checked (a tool or the model is failing). Baseline 0%.</li><li class="page"><b>PAGE</b> order number guessing: 1 sender(s) were refused for orders they don&#x27;t own 4 times in 60 min: possible order-number guessing. Sender codes: s_khilkdepcfmg</li><li class="ticket"><b>TICKET</b> escalations high: Escalation rate 53% vs baseline 17%.</li></ul></section>
+
+<section class="kpis"><div class="kpi"><span>Complaints, last 7 days</span><b>327</b><span>47 a day</span></div><div class="kpi"><span>Refused by a guard</span><b>14%</b><span>46 complaints, no model call</span></div><div class="kpi"><span>Handed to a person</span><b>20%</b><span>escalate or ask the customer</span></div><div class="kpi"><span>Couldn&#x27;t be checked</span><b>2%</b><span>a tool or the model failed</span></div><div class="kpi"><span>Slowest 5%</span><b>5.3 s</b><span>p95 time to answer</span></div><div class="kpi"><span>Model spend</span><b>US$0.0646</b><span>1.62% of US$4 budget</span></div></section>
+
+<div class="two">
+<section><h2>Complaints per day</h2><p class="muted">Red: more than 5% couldn't be checked, or over 30% handed to a person.</p>
+<svg viewBox="0 0 640 180" role="img" aria-label="bar chart"><rect class="bar" x="8.0" y="18.0" width="79.1" height="136.0" rx="3"><title>Tue 03: 53</title></rect><text class="val" x="47.6" y="14.0">53</text><text class="lbl" x="47.6" y="172">Tue 03</text><rect class="bar" x="97.1" y="46.2" width="79.1" height="107.8" rx="3"><title>Wed 04: 42</title></rect><text class="val" x="136.7" y="42.2">42</text><text class="lbl" x="136.7" y="172">Wed 04</text><rect class="bar" x="186.3" y="18.0" width="79.1" height="136.0" rx="3"><title>Thu 05: 53</title></rect><text class="val" x="225.9" y="14.0">53</text><text class="lbl" x="225.9" y="172">Thu 05</text><rect class="bar" x="275.4" y="36.0" width="79.1" height="118.0" rx="3"><title>Fri 06: 46</title></rect><text class="val" x="315.0" y="32.0">46</text><text class="lbl" x="315.0" y="172">Fri 06</text><rect class="bar" x="364.6" y="51.4" width="79.1" height="102.6" rx="3"><title>Sat 07: 40</title></rect><text class="val" x="404.1" y="47.4">40</text><text class="lbl" x="404.1" y="172">Sat 07</text><rect class="bar" x="453.7" y="38.5" width="79.1" height="115.5" rx="3"><title>Sun 08: 45</title></rect><text class="val" x="493.3" y="34.5">45</text><text class="lbl" x="493.3" y="172">Sun 08</text><rect class="bar alert" x="542.9" y="87.3" width="79.1" height="66.7" rx="3"><title>Mon 09: 26</title></rect><text class="val" x="582.4" y="83.3">26</text><text class="lbl" x="582.4" y="172">Mon 09</text></svg></section>
+<section><h2>Handed to a person, per day</h2><p class="muted">Escalations and requests for more detail.</p>
+<svg viewBox="0 0 640 180" role="img" aria-label="bar chart"><rect class="bar" x="8.0" y="118.4" width="79.1" height="35.6" rx="3"><title>Tue 03: 11%</title></rect><text class="val" x="47.6" y="114.4">11%</text><text class="lbl" x="47.6" y="172">Tue 03</text><rect class="bar" x="97.1" y="60.1" width="79.1" height="93.9" rx="3"><title>Wed 04: 29%</title></rect><text class="val" x="136.7" y="56.1">29%</text><text class="lbl" x="136.7" y="172">Wed 04</text><rect class="bar" x="186.3" y="111.9" width="79.1" height="42.1" rx="3"><title>Thu 05: 13%</title></rect><text class="val" x="225.9" y="107.9">13%</text><text class="lbl" x="225.9" y="172">Thu 05</text><rect class="bar" x="275.4" y="89.2" width="79.1" height="64.8" rx="3"><title>Fri 06: 20%</title></rect><text class="val" x="315.0" y="85.2">20%</text><text class="lbl" x="315.0" y="172">Fri 06</text><rect class="bar" x="364.6" y="73.0" width="79.1" height="81.0" rx="3"><title>Sat 07: 25%</title></rect><text class="val" x="404.1" y="69.0">25%</text><text class="lbl" x="404.1" y="172">Sat 07</text><rect class="bar" x="453.7" y="111.9" width="79.1" height="42.1" rx="3"><title>Sun 08: 13%</title></rect><text class="val" x="493.3" y="107.9">13%</text><text class="lbl" x="493.3" y="172">Sun 08</text><rect class="bar alert" x="542.9" y="18.0" width="79.1" height="136.0" rx="3"><title>Mon 09: 42%</title></rect><text class="val" x="582.4" y="14.0">42%</text><text class="lbl" x="582.4" y="172">Mon 09</text></svg></section>
+</div>
+
+<div class="two">
+<section><h2>Why complaints were refused (7 days)</h2><p class="muted">Decided by code before any model call.</p>
+<div class="hb"><span>third_party_data</span><div><i style="width:100%"></i></div><b>16</b></div><div class="hb"><span>not_order_owner</span><div><i style="width:100%"></i></div><b>16</b></div><div class="hb"><span>out_of_scope</span><div><i style="width:88%"></i></div><b>14</b></div></section>
+<section><h2>Model spend by model</h2><p class="muted">US$, all traced calls. 1.62% of the budget this week.</p>
+<div class="hb"><span>gpt-6.1-terra</span><div><i style="width:100%"></i></div><b>0.06448</b></div><div class="hb"><span>gpt-6-luna</span><div><i style="width:6%"></i></div><b>0.00373</b></div></section>
+</div>
+
+<section><h2>Release gate: latest eval run</h2><p><span class="pill pass">PASS</span> 2026-11-09 16:19 · commit c4d6395 · online · 27 cases (11 refusal, 10 trap, 6 kill-shot, 3 T26, 3 quality)</p><table><tr><th>Gate</th><th class="r">Value</th><th>Result</th></tr><tr><td>unit tests pass</td><td class="r">True</td><td><span class="pill pass">pass</span></td></tr><tr><td>deterministic pass rate</td><td class="r">1.0</td><td><span class="pill pass">pass</span></td></tr><tr><td>refusal pass rate</td><td class="r">1.0</td><td><span class="pill pass">pass</span></td></tr><tr><td>kill shot pass rate</td><td class="r">1.0</td><td><span class="pill pass">pass</span></td></tr><tr><td>llm quality pass rate</td><td class="r">1.0</td><td><span class="pill pass">pass</span></td></tr><tr><td>pii leaks</td><td class="r">0</td><td><span class="pill pass">pass</span></td></tr><tr><td>avg cost usd</td><td class="r">0.0001</td><td><span class="pill pass">pass</span></td></tr></table></section>
+
+<section><h2>Latest complaints</h2><p class="muted">Look up any trace with <code>python show_trace.py</code>.</p>
+<div class="scroll"><table><tr><th>When (SGT)</th><th>Outcome</th><th>Degraded</th><th class="r">Model calls</th>
+<th class="r">Time</th><th class="r">US$</th><th>Trace</th></tr><tr><td>09 Nov 16:40</td><td><span class="pill info">escalate</span></td><td></td><td class="r">0</td><td class="r">89 ms</td><td class="r">0.000000</td><td><code>iogdingpkmoo</code></td></tr><tr><td>09 Nov 16:23</td><td><span class="pill info">escalate</span></td><td></td><td class="r">0</td><td class="r">14 ms</td><td class="r">0.000000</td><td><code>ipffijkdbppa</code></td></tr><tr><td>09 Nov 16:19</td><td><span class="pill fail">not_order_owner</span></td><td></td><td class="r">0</td><td class="r">80 ms</td><td class="r">0.000000</td><td><code>igmdmmcoindb</code></td></tr><tr><td>09 Nov 16:18</td><td><span class="pill fail">out_of_scope</span></td><td></td><td class="r">0</td><td class="r">7 ms</td><td class="r">0.000000</td><td><code>ahcnchaggpcc</code></td></tr><tr><td>09 Nov 16:17</td><td><span class="pill info">escalate</span></td><td></td><td class="r">0</td><td class="r">87 ms</td><td class="r">0.000000</td><td><code>dmgmjapgjdcg</code></td></tr><tr><td>09 Nov 16:16</td><td><span class="pill fail">not_order_owner</span></td><td></td><td class="r">0</td><td class="r">79 ms</td><td class="r">0.000000</td><td><code>acmjnfigjapl</code></td></tr><tr><td>09 Nov 16:13</td><td><span class="pill fail">not_order_owner</span></td><td></td><td class="r">0</td><td class="r">79 ms</td><td class="r">0.000000</td><td><code>jlggbdkbahne</code></td></tr><tr><td>09 Nov 16:12</td><td><span class="pill warn">escalate</span></td><td>resolve_order: TimeoutError</td><td class="r">0</td><td class="r">80 ms</td><td class="r">0.000000</td><td><code>jbnfcaeoalhh</code></td></tr><tr><td>09 Nov 16:11</td><td><span class="pill fail">not_order_owner</span></td><td></td><td class="r">0</td><td class="r">79 ms</td><td class="r">0.000000</td><td><code>lncoohdpobid</code></td></tr><tr><td>09 Nov 16:10</td><td><span class="pill info">escalate</span></td><td></td><td class="r">0</td><td class="r">16 ms</td><td class="r">0.000000</td><td><code>jcpfbmifbaoi</code></td></tr><tr><td>09 Nov 16:07</td><td><span class="pill warn">escalate</span></td><td>resolve_order: TimeoutError</td><td class="r">0</td><td class="r">79 ms</td><td class="r">0.000000</td><td><code>kdemkcpmdcbf</code></td></tr><tr><td>09 Nov 16:05</td><td><span class="pill warn">escalate</span></td><td>resolve_order: TimeoutError</td><td class="r">0</td><td class="r">77 ms</td><td class="r">0.000000</td><td><code>oafnadojpklh</code></td></tr><tr><td>09 Nov 16:04</td><td><span class="pill warn">escalate</span></td><td>resolve_order: TimeoutError</td><td class="r">0</td><td class="r">81 ms</td><td class="r">0.000000</td><td><code>ifaocoohlbgb</code></td></tr><tr><td>09 Nov 16:03</td><td><span class="pill warn">escalate</span></td><td>resolve_order: TimeoutError</td><td class="r">0</td><td class="r">78 ms</td><td class="r">0.000000</td><td><code>ibckolagjmmn</code></td></tr><tr><td>09 Nov 16:00</td><td><span class="pill warn">escalate</span></td><td>resolve_order: TimeoutError</td><td class="r">0</td><td class="r">81 ms</td><td class="r">0.000000</td><td><code>bncdfjdlmiia</code></td></tr></table></div></section>
+</main></body></html>

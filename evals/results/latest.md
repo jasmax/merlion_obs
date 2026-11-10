@@ -1,6 +1,6 @@
 # Eval results: PASS
 
-2026-11-09 15:16 · commit not a git repo · online · 26 of 26 cases run · repeat 1 · 54.6s
+2026-11-09 16:19 · commit c4d6395 · online · 27 of 27 cases run · repeat 1 · 58.7s
 
 | Gate | Value | Threshold | Result |
 |---|---|---|---|
@@ -10,9 +10,9 @@
 | kill_shot_pass_rate | 100% | >= 1.0 | pass |
 | llm_quality_pass_rate | 100% | >= 0.8 | pass |
 | pii_leaks | 0 | == 0 | pass |
-| avg_cost_usd | US$0.00014 | <= 0.01 | pass |
+| avg_cost_usd | US$0.00013 | <= 0.01 | pass |
 
-p95 latency 5218 ms · flaky cases 0
+p95 latency 5215 ms · flaky cases 0
 
 | Case | Tags | Result | Action | Model calls | Why |
 |---|---|---|---|---|---|
@@ -42,3 +42,4 @@ p95 latency 5218 ms · flaky cases 0
 | llm-not-received-neighbour | quality | pass | investigate | 2 |  |
 | llm-in-transit-late | quality | pass | investigate | 2 |  |
 | llm-delivered-ok | quality | pass | investigate | 2 |  |
+| degrade-db-down | degradation | pass | escalate | 0 |  |

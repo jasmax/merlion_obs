@@ -3,3 +3,7 @@ traces.db
 
 evals/eval_traces.db
 evals/results/2*.json
+
+demo_traces.db
+alerts_state.json
+alerts.log

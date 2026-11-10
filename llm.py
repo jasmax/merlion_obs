@@ -15,8 +15,14 @@ def ask(span, instructions, text, model):
         record_llm(span, model, (len(instructions) + len(text)) // 4, 2, estimated=True)
         return "investigate" if "one word" in instructions else "not_received"
     from openai import OpenAI
-    response = OpenAI().responses.create(model=model, instructions=instructions, input=text)
-    u = response.usage
-    record_llm(span, model, u.input_tokens, u.output_tokens,
-               cached=u.input_tokens_details.cached_tokens, resolved=response.model)
-    return response.output_text
+    try:
+        response = OpenAI().responses.create(model=model, instructions=instructions, input=text)
+        u = response.usage
+        record_llm(span, model, u.input_tokens, u.output_tokens,
+                   cached=u.input_tokens_details.cached_tokens, resolved=response.model)
+        return response.output_text
+    except Exception as e:
+        # Keep the pipeline alive when the model API is unavailable or slow.
+        span["llm.error"] = type(e).__name__
+        record_llm(span, model, (len(instructions) + len(text)) // 4, 2, estimated=True)
+        return "investigate" if "one word" in instructions else "not_received"

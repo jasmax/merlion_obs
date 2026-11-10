@@ -1,0 +1,144 @@
+{
+ "daily": {
+  "2026-11-02": {
+   "requests": 39,
+   "refused": 1,
+   "refused_by": {
+    "third_party_data": 1
+   },
+   "escalated_rate": 0.1282051282051282,
+   "degraded_rate": 0.0,
+   "output_blocked": 0,
+   "p50_ms": 3725,
+   "p95_ms": 4333,
+   "model_calls": 66,
+   "cost_usd": 0.009711,
+   "cost_per_request": 0.000249,
+   "pii_removed": 39
+  },
+  "2026-11-03": {
+   "requests": 51,
+   "refused": 5,
+   "refused_by": {
+    "out_of_scope": 1,
+    "third_party_data": 4
+   },
+   "escalated_rate": 0.11764705882352941,
+   "degraded_rate": 0.0,
+   "output_blocked": 0,
+   "p50_ms": 3750,
+   "p95_ms": 5008,
+   "model_calls": 80,
+   "cost_usd": 0.012215,
+   "cost_per_request": 0.00024,
+   "pii_removed": 51
+  },
+  "2026-11-04": {
+   "requests": 44,
+   "refused": 5,
+   "refused_by": {
+    "third_party_data": 1,
+    "not_order_owner": 2,
+    "out_of_scope": 2
+   },
+   "escalated_rate": 0.2727272727272727,
+   "degraded_rate": 0.0,
+   "output_blocked": 0,
+   "p50_ms": 3606,
+   "p95_ms": 4333,
+   "model_calls": 54,
+   "cost_usd": 0.008346,
+   "cost_per_request": 0.00019,
+   "pii_removed": 44
+  },
+  "2026-11-05": {
+   "requests": 52,
+   "refused": 11,
+   "refused_by": {
+    "not_order_owner": 3,
+    "third_party_data": 5,
+    "out_of_scope": 3
+   },
+   "escalated_rate": 0.1346153846153846,
+   "degraded_rate": 0.0,
+   "output_blocked": 0,
+   "p50_ms": 3599,
+   "p95_ms": 4515,
+   "model_calls": 68,
+   "cost_usd": 0.010071,
+   "cost_per_request": 0.000194,
+   "pii_removed": 52
+  },
+  "2026-11-06": {
+   "requests": 46,
+   "refused": 6,
+   "refused_by": {
+    "out_of_scope": 3,
+    "not_order_owner": 2,
+    "third_party_data": 1
+   },
+   "escalated_rate": 0.21739130434782608,
+   "degraded_rate": 0.0,
+   "output_blocked": 0,
+   "p50_ms": 3692,
+   "p95_ms": 4585,
+   "model_calls": 60,
+   "cost_usd": 0.009017,
+   "cost_per_request": 0.000196,
+   "pii_removed": 46
+  },
+  "2026-11-07": {
+   "requests": 41,
+   "refused": 7,
+   "refused_by": {
+    "not_order_owner": 2,
+    "out_of_scope": 3,
+    "third_party_data": 2
+   },
+   "escalated_rate": 0.21951219512195122,
+   "degraded_rate": 0.0,
+   "output_blocked": 0,
+   "p50_ms": 3838,
+   "p95_ms": 4628,
+   "model_calls": 50,
+   "cost_usd": 0.007743,
+   "cost_per_request": 0.000189,
+   "pii_removed": 41
+  },
+  "2026-11-08": {
+   "requests": 33,
+   "refused": 2,
+   "refused_by": {
+    "third_party_data": 1,
+    "not_order_owner": 1
+   },
+   "escalated_rate": 0.09090909090909091,
+   "degraded_rate": 0.0,
+   "output_blocked": 0,
+   "p50_ms": 4243,
+   "p95_ms": 6318,
+   "model_calls": 56,
+   "cost_usd": 0.008216,
+   "cost_per_request": 0.000249,
+   "pii_removed": 33
+  }
+ },
+ "last_7_days": {
+  "requests": 306,
+  "refused": 37,
+  "refused_by": {
+   "third_party_data": 15,
+   "out_of_scope": 12,
+   "not_order_owner": 10
+  },
+  "escalated_rate": 0.16993464052287582,
+  "degraded_rate": 0.0,
+  "output_blocked": 0,
+  "p50_ms": 3739,
+  "p95_ms": 5008,
+  "model_calls": 434,
+  "cost_usd": 0.065319,
+  "cost_per_request": 0.000213,
+  "pii_removed": 306
+ }
+}

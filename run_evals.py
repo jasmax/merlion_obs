@@ -35,7 +35,12 @@ GATES = {  # metric: (comparison, threshold). Deterministic behaviour must be pe
 
 
 def run_case(case):
-    out = agent.triage(case["email"], case["sender"])
+    if case.get("fault") == "db":
+        os.environ["FAULT_DB"] = "1"             # this case runs with the database "down"
+    try:
+        out = agent.triage(case["email"], case["sender"])
+    finally:
+        os.environ.pop("FAULT_DB", None)
     rows = agent.tracer.db.execute("SELECT name, duration_ms, attrs FROM spans WHERE trace_id=?",
                                    (agent.tracer.trace_id,)).fetchall()
     attrs = [json.loads(a) for _, _, a in rows]

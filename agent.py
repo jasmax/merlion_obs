@@ -1,3 +1,4 @@
+import hashlib
 import os
 import re
 import time
@@ -50,6 +51,8 @@ def resolve_order(order_no, sender):
     """T01/T26: the same number can exist in v1 and v2. Pick the one this sender owns, in code."""
     with tracer.span("resolve_order", order_no=order_no) as s:
         time.sleep(0.05)                         # stands in for the database query
+        if os.environ.get("FAULT_DB") == "1":    # practice switch: pretend the database is down
+            raise TimeoutError("order database timed out")
         candidates = [(sys, order_no) for sys in ("v1", "v2") if (sys, order_no) in ORDERS]
         owned = [k for k in candidates if check_ownership(ORDERS[k], sender)[0]]
         s.update(candidates=[f"{sys}:{no}" for sys, no in candidates], owned=len(owned))
@@ -126,8 +129,15 @@ def finish(span, resolution, order_no, notes, sources, amount=None):
     return {"resolution": resolution, "amount": amount, "reply": reply, "notes": notes, "sources": sources}
 
 
+def sender_code(sender):
+    """A one-way code for the sender, so metrics can count repeat senders without storing the address.
+    Letters only, so the PII scanner can never mistake it for a phone number."""
+    digest = hashlib.sha256((sender or "").strip().lower().encode()).hexdigest()[:12]
+    return "s_" + digest.translate(str.maketrans("0123456789", "ghijklmnop"))
+
+
 def triage(email, sender):
-    with tracer.span("triage", email_chars=len(email), sender=sender) as s:
+    with tracer.span("triage", email_chars=len(email), sender=sender, sender_code=sender_code(sender)) as s:
         # 1. Input guardrail on the raw text: no model call if it's refused.
         with tracer.span("input_guard") as g:
             ok, rule, message = check_input(email)
@@ -142,7 +152,11 @@ def triage(email, sender):
 
         # 2. Resolve the order across v1/v2 and check ownership (the kill-shot), before any model call.
         order_no = find_order_no(masked)
-        outcome, key = resolve_order(order_no, sender) if order_no else ("not_found", None)
+        try:
+            outcome, key = resolve_order(order_no, sender) if order_no else ("not_found", None)
+        except Exception as e:                   # checklist 4: say what couldn't be checked, never guess
+            s["degraded"] = f"resolve_order: {type(e).__name__}"
+            return finish(s, "escalate", order_no, ["Couldn't check the order database right now."], [])
         with tracer.span("ownership_guard") as g:
             g.update(blocked=outcome == "not_owner", rule="not_order_owner" if outcome == "not_owner" else None)
         if outcome == "not_owner":
@@ -155,7 +169,11 @@ def triage(email, sender):
 
         # 3. Evidence by code, decision by the model, reply and amount by code.
         facts, sources, notes = gather_evidence(key)
-        resolution = recommend(facts, notes, masked, classify(masked))
+        try:
+            resolution = recommend(facts, notes, masked, classify(masked))
+        except Exception as e:                   # model down or timed out: keep the evidence, let a person decide
+            s["degraded"] = f"model: {type(e).__name__}"
+            return finish(s, "escalate", order_no, notes + ["Couldn't get a recommendation right now."], sources)
         return finish(s, resolution, order_no, notes, sources, AMOUNTS.get(resolution))
 
 

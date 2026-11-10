@@ -8,6 +8,12 @@ from contextlib import contextmanager
 
 from redact import redact
 
+_LETTERS = str.maketrans("0123456789", "ghijklmnop")
+
+
+def new_id(length):
+    """A random ID made of letters only, so no ID can ever look like a phone, NRIC or card number."""
+    return uuid.uuid4().hex[:length].translate(_LETTERS)
 
 class Tracer:
     def __init__(self, path=None):
@@ -22,8 +28,8 @@ class Tracer:
     @contextmanager
     def span(self, name, **attrs):
         if not self.stack:                      # outermost span = a new trace
-            self.trace_id = uuid.uuid4().hex[:12]
-        span_id = uuid.uuid4().hex[:8]
+            self.trace_id = new_id(12)
+        span_id = new_id(8)
         parent_id = self.stack[-1] if self.stack else None
         self.stack.append(span_id)
         start, status = time.time(), "ok"
