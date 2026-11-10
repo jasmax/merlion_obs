@@ -6,6 +6,7 @@
 __pycache__/
 *.db
 evals/
+!evals/results/latest.json
 dashboard.html
 metrics.json
 alerts_state.json

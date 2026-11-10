@@ -57,10 +57,15 @@ def pii_in(text):
     return hits
 
 
-def main():
+class DashboardError(Exception):
+    pass
+
+
+def render():
+    """Return (page_html, alerts_firing). Raises DashboardError if there are no traces or the page holds PII."""
     reqs = load_requests()
     if not reqs:
-        sys.exit("No traces found. Run the agent (or python simulate_traffic.py) first.")
+        raise DashboardError("No traces found. Run the agent (or python simulate_traffic.py) first.")
     now = dt.datetime.now(SGT)
     daily = by_day(reqs)
     days = list(daily)[-7:]
@@ -184,10 +189,18 @@ code {{ font-size:12px }}
 
     leaks = pii_in(page)
     if leaks:
-        sys.exit(f"Not written: personal data found in the page: {leaks[:5]}")
+        raise DashboardError(f"Personal data found in the page: {leaks[:5]}")
+    return page, len(firing)
+
+
+def main():
+    try:
+        page, firing = render()
+    except DashboardError as e:
+        sys.exit(f"Not written: {e}")
     with open("dashboard.html", "w", encoding="utf-8") as f:
         f.write(page)
-    print(f"dashboard.html written ({len(page) / 1024:.0f} KB, {len(firing)} alert(s) firing, PII check passed)")
+    print(f"dashboard.html written ({len(page) / 1024:.0f} KB, {firing} alert(s) firing, PII check passed)")
 
 
 if __name__ == "__main__":
