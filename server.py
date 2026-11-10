@@ -27,7 +27,6 @@ import agent  # noqa: E402  (after load_dotenv so model settings are read)
 import auth  # noqa: E402
 from build_dashboard import DashboardError, render  # noqa: E402
 
-API_TOKEN = os.environ.get("API_TOKEN", "")
 SESSION_SECRET = os.environ.get("SESSION_SECRET", "")
 USERS = auth.load_users()
 COOKIE = "session"
