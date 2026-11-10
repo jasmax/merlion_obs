@@ -19,7 +19,7 @@ load_dotenv()
 
 import agent  # noqa: E402  (after load_dotenv so model settings are read)
 
-API_TOKEN = os.environ.get("API_TOKEN", "")
+API_TOKEN = "5ZYZyeCGgJXLQ2asGyaffSsBjz3VVXFedDiSllCyY9o"
 MAX_BODY = 64 * 1024
 
 
