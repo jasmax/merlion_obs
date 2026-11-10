@@ -1,18 +1,18 @@
-# Eval results: PASS
+# Eval results: FAIL
 
-2026-11-10 08:49 · commit 3920ae0 · online · 27 of 27 cases run · repeat 1 · 54.7s
+2026-11-10 09:30 · commit ff56cd1 · online · 27 of 27 cases run · repeat 1 · 50.6s
 
 | Gate | Value | Threshold | Result |
 |---|---|---|---|
-| unit_tests_pass | True | == True | pass |
+| unit_tests_pass | False | == True | fail |
 | deterministic_pass_rate | 100% | >= 1.0 | pass |
 | refusal_pass_rate | 100% | >= 1.0 | pass |
 | kill_shot_pass_rate | 100% | >= 1.0 | pass |
 | llm_quality_pass_rate | 100% | >= 0.8 | pass |
 | pii_leaks | 0 | == 0 | pass |
-| avg_cost_usd | US$0.00014 | <= 0.01 | pass |
+| avg_cost_usd | US$0.00013 | <= 0.01 | pass |
 
-p95 latency 4493 ms · flaky cases 0
+p95 latency 4050 ms · flaky cases 0
 
 | Case | Tags | Result | Action | Model calls | Why |
 |---|---|---|---|---|---|
